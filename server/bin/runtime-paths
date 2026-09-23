@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+# Gemeinsame, sichere Pfadauflösung für die Administrationsskripte.
+# Die .env wird bewusst nicht als Shellcode eingebunden.
+
+tdi_dotenv_value() {
+    local key="$1"
+    local env_file="$2"
+    local raw_value
+
+    [[ -f "$env_file" ]] || return 1
+
+    raw_value="$(
+        awk -v requested_key="$key" '
+            index($0, requested_key "=") == 1 {
+                print substr($0, length(requested_key) + 2)
+                exit
+            }
+        ' "$env_file"
+    )"
+
+    [[ -n "$raw_value" ]] || return 1
+
+    if [[ "$raw_value" == \'*\' ]] || [[ "$raw_value" == \"*\" ]]; then
+        if (( ${#raw_value} < 2 )); then
+            return 1
+        fi
+
+        raw_value="${raw_value:1:${#raw_value}-2}"
+    fi
+
+    printf '%s' "$raw_value"
+}
+
+tdi_resolve_setting() {
+    local variable_name="$1"
+    local env_file="$2"
+    local default_value="$3"
+    local resolved_value="${!variable_name:-}"
+
+    if [[ -z "$resolved_value" ]]; then
+        resolved_value="$(tdi_dotenv_value "$variable_name" "$env_file" || true)"
+    fi
+
+    if [[ -z "$resolved_value" ]]; then
+        resolved_value="$default_value"
+    fi
+
+    printf '%s' "$resolved_value"
+}
+
+tdi_require_absolute_path() {
+    local path="$1"
+    local label="$2"
+
+    if [[ "$path" != /* ]] || [[ "$path" == *$'\n'* ]]; then
+        echo "Fehler: $label muss ein absoluter Pfad sein: $path" >&2
+        return 1
+    fi
+}

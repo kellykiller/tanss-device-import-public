@@ -8,7 +8,17 @@ if (( EUID != 0 )); then
     exit 1
 fi
 
-secret_directory="/opt/tanss-device-import/secrets"
+script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+server_directory="$(cd -- "$script_directory/.." && pwd -P)"
+source "$script_directory/runtime-paths"
+
+secret_directory="$(
+    tdi_resolve_setting \
+        IMPORT_API_SECRETS_PATH \
+        "$server_directory/.env" \
+        "/opt/tanss-device-import/secrets"
+)"
+tdi_require_absolute_path "$secret_directory" "IMPORT_API_SECRETS_PATH"
 secret_file="$secret_directory/totp_secret"
 action="${1:-}"
 issuer="TANSS Device Import"
@@ -89,8 +99,8 @@ write_new_secret() {
            tanss-device-import-api 2>/dev/null |
            grep -qx 'true'; then
         /usr/bin/docker compose \
-            --project-directory /opt/tanss-device-import \
-            -f /opt/tanss-device-import/compose.yaml \
+            --project-directory "$server_directory" \
+            -f "$server_directory/compose.yaml" \
             restart import-api
     fi
 

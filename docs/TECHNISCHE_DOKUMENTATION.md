@@ -1,6 +1,6 @@
 # Technische Dokumentation – TANSS Device Import
 
-**Release:** Client 0.18.0 / Importdienst 0.18.0  
+**Release:** Client 0.18.1 / Importdienst 0.18.1
 **Laufzeiten:** .NET 10, WPF unter Windows, ASP.NET Core unter Linux/Docker
 
 ## 1. Zweck und Systemgrenze
@@ -15,7 +15,7 @@ Datenbankbezeichnung, Kundenkennung oder Zertifikat-Fingerabdruck.
 
 ```mermaid
 flowchart TD
-    A["Windows-Client 0.18.0"] -->|"HTTPS · Passkey oder TOTP"| B["Importdienst 0.18.0"]
+    A["Windows-Client 0.18.1"] -->|"HTTPS · Passkey oder TOTP"| B["Importdienst 0.18.1"]
     B -->|"HTTPS · externe Tokens"| C["TANSS API"]
     B -->|"TLS · SQL-Lesekonto · optional"| D["SAP Business One"]
     B -->|"HTTPS · optional"| E["Wortmann-Seriennummernsuche"]
@@ -220,7 +220,9 @@ oder SAP. `/status` zeigt Token-, Passkey- und TOTP-Konfiguration ohne geheime
 Werte. Externe Abhängigkeiten werden zusätzlich durch die konkrete Funktion
 geprüft und liefern begrenzte, nicht sensitive Fehlermeldungen.
 
-Ein Upgrade auf 0.18.0 erfordert Server und Client. Passkey-Credentials bleiben
+Ein Upgrade von 0.18.0 auf 0.18.1 korrigiert die Pfadauflösung der
+Administrationsskripte. Sie lesen die persistenten Daten- und Secret-Pfade aus
+der lokalen `.env`, ohne diese als Shellcode auszuführen. Passkey-Credentials bleiben
 bei Weiterverwendung des persistenten Datenverzeichnisses erhalten. Vor dem
 öffentlichen Veröffentlichen ist zusätzlich die vollständige Git-Historie auf
 frühere interne Angaben zu prüfen.

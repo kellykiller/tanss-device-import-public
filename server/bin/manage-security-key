@@ -8,7 +8,17 @@ if (( EUID != 0 )); then
     exit 1
 fi
 
-data_directory="/opt/tanss-device-import/data/fido2"
+script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+server_directory="$(cd -- "$script_directory/.." && pwd -P)"
+source "$script_directory/runtime-paths"
+
+data_directory="$(
+    tdi_resolve_setting \
+        IMPORT_API_DATA_PATH \
+        "$server_directory/.env" \
+        "/opt/tanss-device-import/data/fido2"
+)"
+tdi_require_absolute_path "$data_directory" "IMPORT_API_DATA_PATH"
 credential_file="$data_directory/credentials.json"
 enrollment_file="$data_directory/enrollment-code.json"
 action="${1:-}"
