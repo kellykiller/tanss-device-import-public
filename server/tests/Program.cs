@@ -15,6 +15,8 @@ var tests = new (string Name, Action Test)[]
     ("Widersprüchliche Artikelnummern ablehnen", TestConflictingArticleNumbers),
     ("Betriebssystemfilter", TestOperatingSystemFilter),
     ("Ungültige Katalogeinträge überspringen", TestInvalidCatalogEntry),
+    ("Kundendetail ohne displayId akzeptieren", TestCompanyDetailWithoutDisplayId),
+    ("Kundensuche ohne displayId ablehnen", TestCompanySearchWithoutDisplayId),
     ("Vorhandenes System ergänzen", TestSupplementPlanner),
     ("Vorhandenes System überschreiben", TestOverwritePlanner),
     ("Inaktiven Hostnamen-Vorgänger bei Aktualisierung ignorieren", TestInactivePredecessorPolicy),
@@ -204,6 +206,30 @@ static void TestInvalidCatalogEntry()
     Equal("Windows 11 Pro", name);
     Equal(false, DeviceCatalogParser.TryReadEntry(emptyNameEntry, out _, out _));
     Equal(false, DeviceCatalogParser.TryReadEntry(missingIdEntry, out _, out _));
+}
+
+static void TestCompanyDetailWithoutDisplayId()
+{
+    using var document = System.Text.Json.JsonDocument.Parse(
+        """{"id":144,"name":"Misha Rau","street":"Teststraße 1"}""");
+    var company = CompanyResponseParser.Parse(
+        document.RootElement,
+        requireCustomerNumber: false);
+
+    Equal(144L, company.Id);
+    Equal<string?>(null, company.CustomerNumber);
+    Equal("Misha Rau", company.Name);
+}
+
+static void TestCompanySearchWithoutDisplayId()
+{
+    using var document = System.Text.Json.JsonDocument.Parse(
+        """{"id":144,"name":"Misha Rau"}""");
+
+    Throws<InvalidTanssResponseException>(() =>
+        CompanyResponseParser.Parse(
+            document.RootElement,
+            requireCustomerNumber: true));
 }
 
 static void TestSupplementPlanner()

@@ -9,14 +9,14 @@ permissions:
   contents: write
 
 env:
-  SERVER_VERSION: "0.18.1"
-  CLIENT_VERSION: "0.18.1"
-  RELEASE_TAG: "v0.18.1"
+  SERVER_VERSION: "0.18.2"
+  CLIENT_VERSION: "0.18.2"
+  RELEASE_TAG: "v0.18.2"
 
 jobs:
   prepare:
     name: Prepare draft release
-    if: github.ref_name == 'release/0.18.1'
+    if: github.ref_name == 'release/0.18.2'
     runs-on: ubuntu-latest
     steps:
       - name: Create or refresh draft release
@@ -51,7 +51,7 @@ jobs:
 
   server:
     name: Build and upload server
-    if: github.ref_name == 'release/0.18.1'
+    if: github.ref_name == 'release/0.18.2'
     needs: prepare
     runs-on: ubuntu-latest
     steps:
@@ -100,7 +100,7 @@ jobs:
 
   client:
     name: Build and upload Windows client
-    if: github.ref_name == 'release/0.18.1'
+    if: github.ref_name == 'release/0.18.2'
     needs: prepare
     runs-on: windows-latest
     steps:
@@ -147,7 +147,7 @@ jobs:
 
   publish:
     name: Verify and publish release
-    if: github.ref_name == 'release/0.18.1'
+    if: github.ref_name == 'release/0.18.2'
     needs:
       - server
       - client
@@ -190,6 +190,6 @@ jobs:
 
           gh release edit "${RELEASE_TAG}" \
             --title "TANSS Device Import v${SERVER_VERSION}" \
-            --notes-file docs/RELEASE_NOTES_0.18.1.md \
+            --notes-file docs/RELEASE_NOTES_0.18.2.md \
             --draft=false \
             --latest

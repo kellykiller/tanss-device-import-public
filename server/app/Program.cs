@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using TnsApiImport;
 
-const string ServiceVersion = "0.18.1";
+const string ServiceVersion = "0.18.2";
 const string TotpSessionPath = "/api/v1/auth/totp/session";
 
 var builder = WebApplication.CreateBuilder(args);
@@ -124,7 +124,7 @@ builder.Services.AddHttpClient<WortmannWarrantyClient>(client =>
     client.BaseAddress = new Uri("https://www.wortmann.de/", UriKind.Absolute);
     client.Timeout = TimeSpan.FromSeconds(12);
     client.DefaultRequestHeaders.UserAgent.ParseAdd(
-        "TANSS-Device-Import/0.18.1 (+https://www.wortmann.de/)");
+        "TANSS-Device-Import/0.18.2 (+https://www.wortmann.de/)");
 });
 
 var app = builder.Build();

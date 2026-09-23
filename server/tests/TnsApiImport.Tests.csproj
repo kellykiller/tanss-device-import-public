@@ -12,6 +12,7 @@
     <Compile Include="../app/DeviceTransferPreview.cs" Link="DeviceTransferPreview.cs" />
     <Compile Include="../app/DeviceCatalogPolicy.cs" Link="DeviceCatalogPolicy.cs" />
     <Compile Include="../app/DeviceCatalogParser.cs" Link="DeviceCatalogParser.cs" />
+    <Compile Include="../app/CompanyResponseParser.cs" Link="CompanyResponseParser.cs" />
     <Compile Include="../app/DeviceWritePlanner.cs" Link="DeviceWritePlanner.cs" />
     <Compile Include="../app/DeviceNameConflictPolicy.cs" Link="DeviceNameConflictPolicy.cs" />
     <Compile Include="../app/TotpAlgorithm.cs" Link="TotpAlgorithm.cs" />
