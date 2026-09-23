@@ -9,7 +9,8 @@
 - Der Windows-Client verwendet wieder die zum WebAuthn-Adapter passende
   `Fido2.Models`-Version 4.0.1. Dadurch wird der Laufzeitfehler
   `Attempted to access a missing method` beim Registrieren oder Verwenden eines
-  FIDO2-Hardware-Schlüssels vermieden.
+  FIDO2-Hardware-Schlüssels vermieden. Die unabhängige Serverbibliothek
+  `Fido2.AspNet` verbleibt auf 4.1.0.
 - Clientanzeigen verwenden nach Vorschau und Übertragung den bereits eindeutig
   geprüften Kunden, auch wenn TANSS im späteren Detailabruf keine Kundennummer
   zurückgibt.

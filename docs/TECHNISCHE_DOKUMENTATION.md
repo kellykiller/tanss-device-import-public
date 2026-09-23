@@ -229,6 +229,7 @@ frühere interne Angaben zu prüfen.
 
 0.18.2 toleriert beim TANSS-Kundenabruf per interner ID ein fehlendes
 `displayId`. Die vorherige Kundensuche bleibt weiterhin auf eine exakt passende
-Kundennummer beschränkt. Zusätzlich sind Client und Server auf Fido2 4.0.1
-fixiert, damit der Windows-WebAuthn-Adapter keine binär inkompatible, erst später
-veröffentlichte Modellbibliothek lädt.
+Kundennummer beschränkt. Zusätzlich ist der Windows-Client auf Fido2.Models
+4.0.1 fixiert, damit der WebAuthn-Adapter keine binär inkompatible, erst später
+veröffentlichte Modellbibliothek lädt. Der Server verbleibt unabhängig davon
+auf Fido2.AspNet 4.1.0.
