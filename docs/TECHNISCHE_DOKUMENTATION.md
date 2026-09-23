@@ -1,6 +1,6 @@
 # Technische Dokumentation – TANSS Device Import
 
-**Release:** Client 0.18.1 / Importdienst 0.18.1
+**Release:** Client 0.18.2 / Importdienst 0.18.2
 **Laufzeiten:** .NET 10, WPF unter Windows, ASP.NET Core unter Linux/Docker
 
 ## 1. Zweck und Systemgrenze
@@ -15,7 +15,7 @@ Datenbankbezeichnung, Kundenkennung oder Zertifikat-Fingerabdruck.
 
 ```mermaid
 flowchart TD
-    A["Windows-Client 0.18.1"] -->|"HTTPS · Passkey oder TOTP"| B["Importdienst 0.18.1"]
+    A["Windows-Client 0.18.2"] -->|"HTTPS · Passkey oder TOTP"| B["Importdienst 0.18.2"]
     B -->|"HTTPS · externe Tokens"| C["TANSS API"]
     B -->|"TLS · SQL-Lesekonto · optional"| D["SAP Business One"]
     B -->|"HTTPS · optional"| E["Wortmann-Seriennummernsuche"]
@@ -226,3 +226,9 @@ der lokalen `.env`, ohne diese als Shellcode auszuführen. Passkey-Credentials b
 bei Weiterverwendung des persistenten Datenverzeichnisses erhalten. Vor dem
 öffentlichen Veröffentlichen ist zusätzlich die vollständige Git-Historie auf
 frühere interne Angaben zu prüfen.
+
+0.18.2 toleriert beim TANSS-Kundenabruf per interner ID ein fehlendes
+`displayId`. Die vorherige Kundensuche bleibt weiterhin auf eine exakt passende
+Kundennummer beschränkt. Zusätzlich sind Client und Server auf Fido2 4.0.1
+fixiert, damit der Windows-WebAuthn-Adapter keine binär inkompatible, erst später
+veröffentlichte Modellbibliothek lädt.

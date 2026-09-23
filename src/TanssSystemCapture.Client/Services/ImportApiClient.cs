@@ -616,7 +616,6 @@ public sealed class ImportApiClient : IDisposable
                 string.IsNullOrWhiteSpace(match.SerialNumber) ||
                 match.Company is null ||
                 match.Company.Id <= 0 ||
-                string.IsNullOrWhiteSpace(match.Company.CustomerNumber) ||
                 string.IsNullOrWhiteSpace(match.Company.Name)))
         {
             throw new ImportApiException(
@@ -941,7 +940,6 @@ public sealed class ImportApiClient : IDisposable
                 StringComparison.OrdinalIgnoreCase) ||
             result.Company is null ||
             result.Company.Id != companyId ||
-            string.IsNullOrWhiteSpace(result.Company.CustomerNumber) ||
             string.IsNullOrWhiteSpace(result.Company.Name) ||
             result.Device is null ||
             result.Device.Id <= 0 ||

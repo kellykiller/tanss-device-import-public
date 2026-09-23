@@ -1,4 +1,4 @@
-# TANSS Device Import API 0.18.1
+# TANSS Device Import API 0.18.2
 
 Der Importdienst vermittelt ausschließlich zwischen dem Windows-Client und den
 konfigurierten TANSS-/SAP-Schnittstellen. Tokens, Kennwörter und TLS-Schlüssel
@@ -115,13 +115,13 @@ Secret-Inhalte zurückzugeben.
 
 ## Aktualisierung
 
-Vor dem Wechsel auf 0.18.1 müssen `.env`, Secrets, TLS-Dateien und das persistente
+Vor dem Wechsel auf 0.18.2 müssen `.env`, Secrets, TLS-Dateien und das persistente
 Passkey-Datenverzeichnis gesichert bzw. weiterverwendet werden. Danach:
 
 ```bash
-unzip -tq tns-api-server-v0.18.1.zip
-unzip -q tns-api-server-v0.18.1.zip -d tanss-device-import-v0.18.1
-cd tanss-device-import-v0.18.1
+unzip -tq tns-api-server-v0.18.2.zip
+unzip -q tns-api-server-v0.18.2.zip -d tanss-device-import-v0.18.2
+cd tanss-device-import-v0.18.2
 cp /path/to/existing/.env .env
 docker compose config
 docker compose build
@@ -129,6 +129,6 @@ docker compose up -d
 curl --fail --silent http://127.0.0.1:8080/health
 ```
 
-Die Antwort muss `"version":"0.18.1"` enthalten. Anschließend `/status` über
+Die Antwort muss `"version":"0.18.2"` enthalten. Anschließend `/status` über
 die authentifizierte HTTPS-Schnittstelle prüfen und erst danach den Client
-0.18.1 verteilen.
+0.18.2 verteilen.

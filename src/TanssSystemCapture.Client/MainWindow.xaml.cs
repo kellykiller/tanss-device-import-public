@@ -818,10 +818,13 @@ public partial class MainWindow : Window
         var customerRelation = match.BelongsToSelectedCompany
             ? "ausgewählter Kunde"
             : "anderer Kunde";
+        var customerNumber = string.IsNullOrWhiteSpace(match.Company!.CustomerNumber)
+            ? $"TANSS-ID {match.Company.Id}"
+            : match.Company.CustomerNumber;
 
         return
             $"• TANSS-ID {match.Id} – {match.Name} – {hostType}, {activity} – " +
-            $"Kunde {match.Company!.CustomerNumber} – {match.Company.Name} ({customerRelation})";
+            $"Kunde {customerNumber} – {match.Company.Name} ({customerRelation})";
     }
 
     private void SendSerialNumberCheckBox_OnChanged(object sender, RoutedEventArgs e)
@@ -1140,8 +1143,8 @@ public partial class MainWindow : Window
             output.AppendLine("Es wurde nichts in TANSS gespeichert.");
             output.AppendLine();
             output.AppendLine(
-                $"Kunde: {preview.Company!.CustomerNumber} – {preview.Company.Name} " +
-                $"(TANSS-ID {preview.Company.Id})");
+                $"Kunde: {_selectedCompany.CustomerNumber} – {_selectedCompany.Name} " +
+                $"(TANSS-ID {_selectedCompany.Id})");
             output.AppendLine($"Gewählte Aktion: {preview.WriteAction}");
             output.AppendLine($"Dokumentierte Operation: {preview.DocumentedTanssOperation}");
             output.AppendLine($"Ziel des Importdienstes: {preview.BridgeTarget}");
@@ -1709,13 +1712,13 @@ public partial class MainWindow : Window
             var successAction = wasUpdated ? "aktualisiert" : "angelegt";
             var writtenDevice = result.Device ??
                 throw new InvalidOperationException("Die TANSS-Gerätebestätigung fehlt.");
-            var writtenCompany = result.Company ??
+            _ = result.Company ??
                 throw new InvalidOperationException("Die TANSS-Kundenbestätigung fehlt.");
 
             DeviceCreationStatusTextBlock.Foreground = ThemeManager.GetBrush("SuccessTextBrush");
             DeviceCreationStatusTextBlock.Text =
                 $"System erfolgreich in TANSS {successAction}: {writtenDevice.Name} – " +
-                $"Kunde {writtenCompany.CustomerNumber} – {writtenCompany.Name}.";
+                $"Kunde {_selectedCompany.CustomerNumber} – {_selectedCompany.Name}.";
             Uri? tanssDeviceUri = null;
 
             if (!string.IsNullOrWhiteSpace(result.DeviceUrl) &&
@@ -1737,7 +1740,7 @@ public partial class MainWindow : Window
                 $"Das System wurde erfolgreich in TANSS {successAction}.{Environment.NewLine}{Environment.NewLine}" +
                 linkText +
                 $"Hostname: {writtenDevice.Name}{Environment.NewLine}" +
-                $"Kunde: {writtenCompany.CustomerNumber} – {writtenCompany.Name}",
+                $"Kunde: {_selectedCompany.CustomerNumber} – {_selectedCompany.Name}",
                 $"TANSS-System erfolgreich {successAction}",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
