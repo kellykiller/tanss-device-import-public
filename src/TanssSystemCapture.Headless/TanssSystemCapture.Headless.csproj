@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AssemblyName>tanss-system-capture</AssemblyName>
+    <RootNamespace>TanssSystemCapture.Headless</RootNamespace>
+    <Version>0.19.0</Version>
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <DebugType>None</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../TanssSystemCapture.Client/Models/Company.cs" Link="Models/Company.cs" />
+    <Compile Include="../TanssSystemCapture.Client/Models/DeviceCatalog.cs" Link="Models/DeviceCatalog.cs" />
+    <Compile Include="../TanssSystemCapture.Client/Models/DeviceSerialMatch.cs" Link="Models/DeviceSerialMatch.cs" />
+    <Compile Include="../TanssSystemCapture.Client/Models/Host.cs" Link="Models/Host.cs" />
+    <Compile Include="../TanssSystemCapture.Client/Models/SystemCaptureResult.cs" Link="Models/SystemCaptureResult.cs" />
+    <Compile Include="../TanssSystemCapture.Client/Models/TotpSession.cs" Link="Models/TotpSession.cs" />
+    <Compile Include="../TanssSystemCapture.Client/Models/TransferPreview.cs" Link="Models/TransferPreview.cs" />
+    <Compile Include="../TanssSystemCapture.Client/Services/DeviceCatalogMatcher.cs" Link="Services/DeviceCatalogMatcher.cs" />
+  </ItemGroup>
+
+</Project>
