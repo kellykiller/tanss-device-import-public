@@ -1,0 +1,213 @@
+<Window x:Class="TanssSystemCapture.Client.CustomerSelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="TANSS Systemerfassung – Kundenauswahl"
+        Width="560"
+        Height="790"
+        MinWidth="520"
+        MinHeight="740"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResize"
+        FontFamily="Segoe UI"
+        FontSize="14"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource PrimaryTextBrush}">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0"
+              Margin="0,0,0,22">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="TANSS Systemerfassung"
+                       FontSize="22"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center">
+                <TextBlock Text="Dark Mode"
+                           Margin="0,0,10,0"
+                           VerticalAlignment="Center" />
+                <ToggleButton x:Name="ThemeToggleButton"
+                              Style="{StaticResource ThemeToggleStyle}"
+                              IsChecked="True"
+                              ToolTip="Zwischen dunkler und heller Darstellung wechseln"
+                              Checked="ThemeToggleButton_OnToggled"
+                              Unchecked="ThemeToggleButton_OnToggled" />
+            </StackPanel>
+        </Grid>
+
+        <GroupBox Grid.Row="1"
+                  Header="Importdienst"
+                  Margin="0,0,0,18"
+                  Padding="12">
+            <StackPanel>
+                <TextBlock Text="Serveradresse:" Margin="0,0,0,6" />
+                <TextBox x:Name="ServerAddressTextBox"
+                         Height="34"
+                         Padding="8,4"
+                         MaxLength="500"
+                         ToolTip="HTTPS-Adresse des TANSS-Importdienstes"
+                         TextChanged="ServerAddressTextBox_OnTextChanged" />
+                <TextBlock Margin="0,6,0,0"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
+                           TextWrapping="Wrap"
+                           Text="Die Adresse wird nur für diese Programmsitzung verwendet und nicht gespeichert. Beispiel: https://import.example.org:45001/" />
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox Grid.Row="2"
+                  Header="Anmeldung am Importdienst"
+                  Margin="0,0,0,18"
+                  Padding="12">
+            <StackPanel>
+                <RadioButton x:Name="PasskeyRadioButton"
+                             Content="Passkey (FIDO2-Hardware-Schlüssel)"
+                             IsChecked="True"
+                             GroupName="AuthenticationMode"
+                             Checked="AuthenticationMode_OnChecked" />
+                <TextBlock Margin="24,4,0,6"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
+                           TextWrapping="Wrap"
+                           Text="Verwendet einen registrierten FIDO2-kompatiblen Hardware-Schlüssel beliebiger Marke. Einstecken und auf Aufforderung berühren; eine PIN wird nicht angefordert." />
+                <Button x:Name="RegisterPasskeyButton"
+                        Content="Neuen Passkey registrieren …"
+                        Width="240"
+                        Height="32"
+                        Margin="24,0,0,12"
+                        HorizontalAlignment="Left"
+                        Click="RegisterPasskeyButton_OnClick" />
+
+                <RadioButton x:Name="TotpRadioButton"
+                             Content="Sechsstelliger TOTP-Code"
+                             GroupName="AuthenticationMode"
+                             Checked="AuthenticationMode_OnChecked" />
+                <Grid Margin="24,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Text="Aktueller Code:" />
+                    <PasswordBox x:Name="TotpCodePasswordBox"
+                                 Grid.Column="1"
+                                 Height="32"
+                                 Padding="8,4"
+                                 MaxLength="6"
+                                 IsEnabled="False" />
+                </Grid>
+            </StackPanel>
+        </GroupBox>
+
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                <TextBlock Text="Kundennummer:" Margin="0,0,0,6" />
+                <TextBox x:Name="CustomerNumberTextBox"
+                         Height="34"
+                         Padding="8,4"
+                         MaxLength="50"
+                         TextChanged="CustomerNumberTextBox_OnTextChanged" />
+            </StackPanel>
+
+            <Button x:Name="CheckCustomerButton"
+                    Grid.Column="1"
+                    Content="Kunde prüfen"
+                    Width="130"
+                    Height="34"
+                    Margin="0,26,0,0"
+                    IsDefault="True"
+                    Click="CheckCustomerButton_OnClick" />
+        </Grid>
+
+        <TextBlock x:Name="StatusTextBlock"
+                   Grid.Row="4"
+                   Margin="0,14,0,14"
+                   TextWrapping="Wrap" />
+
+        <Border x:Name="CustomerResultBorder"
+                Grid.Row="5"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                Padding="16"
+                Visibility="Collapsed">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="165" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.ColumnSpan="2"
+                           Text="Gefundener Kunde"
+                           FontWeight="SemiBold"
+                           FontSize="16"
+                           Margin="0,0,0,14" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0"
+                           Text="Kundennummer:" Margin="0,0,8,8" />
+                <TextBlock x:Name="ResultCustomerNumberTextBlock"
+                           Grid.Row="1" Grid.Column="1"
+                           FontWeight="SemiBold" Margin="0,0,0,8" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0"
+                           Text="Interne TANSS-ID:" Margin="0,0,8,8" />
+                <TextBlock x:Name="ResultCompanyIdTextBlock"
+                           Grid.Row="2" Grid.Column="1" Margin="0,0,0,8" />
+
+                <TextBlock Grid.Row="3" Grid.Column="0"
+                           Text="Firma / Anschrift:" Margin="0,0,8,0" />
+                <TextBlock x:Name="ResultAddressTextBlock"
+                           Grid.Row="3" Grid.Column="1"
+                           TextWrapping="Wrap" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="6" Margin="0,20,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="1"
+                    Content="Beenden"
+                    Width="110"
+                    Height="34"
+                    Margin="0,0,10,0"
+                    IsCancel="True" />
+
+            <Button x:Name="ContinueButton"
+                    Grid.Column="2"
+                    Content="Weiter"
+                    Width="110"
+                    Height="34"
+                    IsEnabled="False"
+                    Click="ContinueButton_OnClick" />
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,93 @@
+<Window x:Class="TanssSystemCapture.Client.SecurityKeyRegistrationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Passkey registrieren"
+        Width="540"
+        Height="420"
+        MinWidth="500"
+        MinHeight="390"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        FontFamily="Segoe UI"
+        FontSize="14"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource PrimaryTextBrush}">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="Neuen Passkey registrieren"
+                   FontSize="20"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,12" />
+
+        <TextBlock Grid.Row="1"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
+                   Margin="0,0,0,18"
+                   Text="Zuerst auf dem Server einen einmaligen Registrierungscode erzeugen. Danach genau den neuen FIDO2-kompatiblen Hardware-Schlüssel einstecken und bei der Windows-Aufforderung berühren. Für die spätere Anmeldung ist keine PIN erforderlich." />
+
+        <Grid Grid.Row="2" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="170" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0"
+                       VerticalAlignment="Center"
+                       Text="Bezeichnung:" />
+            <TextBox x:Name="KeyLabelTextBox"
+                     Grid.Column="1"
+                     Height="32"
+                     Padding="8,4"
+                     MaxLength="80" />
+        </Grid>
+
+        <Grid Grid.Row="3" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="170" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0"
+                       VerticalAlignment="Center"
+                       Text="Registrierungscode:" />
+            <PasswordBox x:Name="EnrollmentCodePasswordBox"
+                         Grid.Column="1"
+                         Height="32"
+                         Padding="8,4"
+                         MaxLength="100" />
+        </Grid>
+
+        <TextBlock x:Name="StatusTextBlock"
+                   Grid.Row="4"
+                   TextWrapping="Wrap"
+                   Margin="0,4,0,14" />
+
+        <Grid Grid.Row="5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="1"
+                    Content="Abbrechen"
+                    Width="110"
+                    Height="34"
+                    Margin="0,0,10,0"
+                    IsCancel="True" />
+            <Button x:Name="RegisterButton"
+                    Grid.Column="2"
+                    Content="Registrieren"
+                    Width="120"
+                    Height="34"
+                    IsDefault="True"
+                    Click="RegisterButton_OnClick" />
+        </Grid>
+    </Grid>
+</Window>

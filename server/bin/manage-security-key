@@ -1,0 +1,217 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+umask 077
+
+if (( EUID != 0 )); then
+    echo "Fehler: Dieses Skript muss als root ausgeführt werden." >&2
+    exit 1
+fi
+
+data_directory="/opt/tanss-device-import/data/fido2"
+credential_file="$data_directory/credentials.json"
+enrollment_file="$data_directory/enrollment-code.json"
+action="${1:-}"
+
+for required_command in openssl install date sha256sum base64 tr; do
+    if ! command -v "$required_command" >/dev/null 2>&1; then
+        echo "Fehler: Benötigter Befehl nicht gefunden: $required_command" >&2
+        exit 1
+    fi
+done
+
+usage() {
+    echo "Verwendung:" >&2
+    echo "  $0 prepare" >&2
+    echo "  $0 enrollment-code [Gültigkeitsminuten]" >&2
+    echo "  $0 status" >&2
+    echo "  $0 list" >&2
+    echo "  $0 revoke CREDENTIAL-ID" >&2
+}
+
+prepare_directory() {
+    install -d -m 0770 -o 1654 -g 1654 "$data_directory"
+}
+
+case "$action" in
+    prepare)
+        prepare_directory
+        echo "FIDO2_DATENVERZEICHNIS_BEREIT=$data_directory"
+        ;;
+
+    enrollment-code)
+        validity_minutes="${2:-10}"
+
+        if [[ ! "$validity_minutes" =~ ^[0-9]+$ ]] ||
+           (( validity_minutes < 1 || validity_minutes > 60 )); then
+            echo "Fehler: Die Gültigkeit muss zwischen 1 und 60 Minuten liegen." >&2
+            exit 1
+        fi
+
+        prepare_directory
+        code="$(openssl rand 32 | base64 | tr '+/' '-_' | tr -d '=\r\n')"
+        code_hash="$(printf '%s' "$code" | sha256sum | tr '[:lower:]' '[:upper:]' | cut -d' ' -f1)"
+        expires_utc="$(date -u -d "+${validity_minutes} minutes" '+%Y-%m-%dT%H:%M:%SZ')"
+        temporary_file="$(mktemp "$data_directory/.enrollment-code.XXXXXX")"
+
+        cleanup() {
+            rm -f -- "$temporary_file"
+        }
+
+        trap cleanup EXIT
+
+        printf '{\n  "codeHashSha256": "%s",\n  "expiresUtc": "%s"\n}\n' \
+            "$code_hash" \
+            "$expires_utc" >"$temporary_file"
+        chown 1654:1654 "$temporary_file"
+        chmod 0640 "$temporary_file"
+        mv -f -- "$temporary_file" "$enrollment_file"
+
+        trap - EXIT
+
+        echo
+        echo "Einmaliger FIDO2-Registrierungscode:"
+        echo "$code"
+        echo
+        echo "Gültig bis (UTC): $expires_utc"
+        echo "Der Code wird beim Registrierungsversuch automatisch verbraucht."
+        echo "Für jeden weiteren Passkey einen neuen Code erzeugen."
+        echo "FIDO2_REGISTRIERUNGSCODE_ERSTELLT"
+        ;;
+
+    status)
+        prepare_directory
+        stat -c 'Directory=%n Owner=%u Group=%g Mode=%a' "$data_directory"
+
+        if [[ -f "$credential_file" ]]; then
+            stat -c 'Credentials=%n Owner=%u Group=%g Mode=%a Size=%s' "$credential_file"
+            echo "FIDO2_STATUS=configured"
+        else
+            echo "FIDO2_STATUS=no_registered_keys"
+        fi
+
+        if [[ -f "$enrollment_file" ]]; then
+            echo "FIDO2_ENROLLMENT_CODE=pending"
+        else
+            echo "FIDO2_ENROLLMENT_CODE=none"
+        fi
+        ;;
+
+    list)
+        prepare_directory
+
+        if [[ ! -f "$credential_file" ]]; then
+            echo "Keine FIDO2-Passkeys registriert."
+            exit 0
+        fi
+
+        if ! command -v python3 >/dev/null 2>&1; then
+            echo "Fehler: Für die formatierte Liste wird python3 benötigt." >&2
+            exit 1
+        fi
+
+        python3 - "$credential_file" <<'PYTHON'
+import base64
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as credential_stream:
+    store = json.load(credential_stream)
+
+credentials = store.get("credentials", [])
+if not credentials:
+    print("Keine FIDO2-Passkeys registriert.")
+    raise SystemExit(0)
+
+for index, credential in enumerate(credentials, start=1):
+    raw_id = base64.b64decode(credential["credentialId"])
+    credential_id = base64.urlsafe_b64encode(raw_id).decode("ascii").rstrip("=")
+    print(f"Key {index}")
+    print(f"  Bezeichnung: {credential['label']}")
+    print(f"  Credential-ID: {credential_id}")
+    print(f"  Registriert: {credential['registeredUtc']}")
+    print(f"  Zuletzt verwendet: {credential.get('lastUsedUtc') or '-'}")
+PYTHON
+        ;;
+
+    revoke)
+        credential_id="${2:-}"
+
+        if [[ -z "$credential_id" || ! -f "$credential_file" ]]; then
+            echo "Fehler: Credential-ID fehlt oder es sind keine Schlüssel registriert." >&2
+            exit 1
+        fi
+
+        if ! command -v python3 >/dev/null 2>&1; then
+            echo "Fehler: Für das sichere Entfernen wird python3 benötigt." >&2
+            exit 1
+        fi
+
+        echo "Hinweis: Der Schlüssel wird sofort gesperrt. Laufende Sitzungen werden durch einen Containerneustart beendet."
+        read -r -p "Passkey wirklich entfernen? [ja/NEIN] " confirmation
+
+        if [[ "$confirmation" != "ja" ]]; then
+            echo "Abgebrochen."
+            exit 1
+        fi
+
+        python3 - "$credential_file" "$credential_id" <<'PYTHON'
+import base64
+import json
+import os
+import sys
+import tempfile
+
+path, requested_id = sys.argv[1:3]
+with open(path, "r", encoding="utf-8") as credential_stream:
+    store = json.load(credential_stream)
+
+credentials = store.get("credentials", [])
+remaining = []
+removed = []
+
+for credential in credentials:
+    raw_id = base64.b64decode(credential["credentialId"])
+    current_id = base64.urlsafe_b64encode(raw_id).decode("ascii").rstrip("=")
+    if current_id == requested_id:
+        removed.append(credential)
+    else:
+        remaining.append(credential)
+
+if len(removed) != 1:
+    print("Fehler: Credential-ID wurde nicht exakt einmal gefunden.", file=sys.stderr)
+    raise SystemExit(1)
+
+store["credentials"] = remaining
+directory = os.path.dirname(path)
+descriptor, temporary_path = tempfile.mkstemp(prefix=".credentials.", dir=directory)
+try:
+    with os.fdopen(descriptor, "w", encoding="utf-8") as output:
+        json.dump(store, output, indent=2, ensure_ascii=False)
+        output.write("\n")
+    os.chown(temporary_path, 1654, 1654)
+    os.chmod(temporary_path, 0o640)
+    os.replace(temporary_path, path)
+finally:
+    if os.path.exists(temporary_path):
+        os.unlink(temporary_path)
+
+print(f"Entfernt: {removed[0]['label']}")
+print(f"Verbleibende Passkeys: {len(remaining)}")
+PYTHON
+
+        if command -v docker >/dev/null 2>&1 &&
+           docker inspect --format '{{.State.Running}}' tanss-device-import-api 2>/dev/null |
+           grep -qx 'true'; then
+            docker restart tanss-device-import-api >/dev/null
+            echo "Container neu gestartet; bestehende FIDO2- und TOTP-Sitzungen sind beendet."
+        fi
+
+        echo "FIDO2_SECURITY_KEY_ENTFERNT"
+        ;;
+
+    *)
+        usage
+        exit 1
+        ;;
+esac

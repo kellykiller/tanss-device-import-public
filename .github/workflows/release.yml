@@ -1,0 +1,190 @@
+name: Publish release
+
+on:
+  push:
+    branches:
+      - "release/**"
+
+permissions:
+  contents: write
+
+env:
+  SERVER_VERSION: "0.18.0"
+  CLIENT_VERSION: "0.18.0"
+  RELEASE_TAG: "v0.18.0"
+
+jobs:
+  prepare:
+    name: Prepare draft release
+    if: github.ref_name == 'release/0.18.0'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or refresh draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          EXISTING_STATE="$(
+            gh release view "${RELEASE_TAG}" \
+              --json isDraft \
+              --jq '.isDraft' \
+              2>/dev/null || true
+          )"
+
+          if [ "${EXISTING_STATE}" = "false" ]; then
+            echo "Release ${RELEASE_TAG} ist bereits veröffentlicht." >&2
+            exit 1
+          fi
+
+          if [ "${EXISTING_STATE}" = "true" ]; then
+            gh release edit "${RELEASE_TAG}" \
+              --target "${GITHUB_SHA}" \
+              --title "TANSS Device Import v${SERVER_VERSION}" \
+              --notes "Pakete werden geprüft und erstellt."
+          else
+            gh release create "${RELEASE_TAG}" \
+              --draft \
+              --target "${GITHUB_SHA}" \
+              --title "TANSS Device Import v${SERVER_VERSION}" \
+              --notes "Pakete werden geprüft und erstellt."
+          fi
+
+  server:
+    name: Build and upload server
+    if: github.ref_name == 'release/0.18.0'
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore and build server
+        run: |
+          dotnet restore server/app/TnsApiImport.csproj
+          dotnet build server/app/TnsApiImport.csproj --configuration Release --no-restore -p:TreatWarningsAsErrors=true
+
+      - name: Restore and run tests
+        run: |
+          dotnet restore server/tests/TnsApiImport.Tests.csproj
+          dotnet run --project server/tests/TnsApiImport.Tests.csproj --configuration Release --no-restore
+
+      - name: Validate Compose and build container
+        run: |
+          docker compose -f server/compose.yaml config
+          docker compose -f server/compose.yaml build
+
+      - name: Create server ZIP
+        run: |
+          mkdir -p release-assets
+          (
+            cd server
+            zip -9 -r "../release-assets/tns-api-server-v${SERVER_VERSION}.zip" .
+          )
+
+      - name: Upload server package to draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release upload "${RELEASE_TAG}" \
+            "release-assets/tns-api-server-v${SERVER_VERSION}.zip" \
+            --clobber
+
+  client:
+    name: Build and upload Windows client
+    if: github.ref_name == 'release/0.18.0'
+    needs: prepare
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore client
+        run: dotnet restore src/TanssSystemCapture.Client/TanssSystemCapture.Client.csproj --runtime win-x64
+
+      - name: Build client
+        run: dotnet build src/TanssSystemCapture.Client/TanssSystemCapture.Client.csproj --configuration Release --no-restore -p:TreatWarningsAsErrors=true
+
+      - name: Publish single EXE
+        run: dotnet publish src/TanssSystemCapture.Client/TanssSystemCapture.Client.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore --output artifacts/client
+
+      - name: Verify and package EXE
+        shell: pwsh
+        run: |
+          $files = @(Get-ChildItem artifacts/client -File)
+          if ($files.Count -ne 1 -or $files[0].Name -ne 'TanssSystemCapture.Client.exe') {
+              $files | Select-Object Name, Length
+              throw 'Der Client-Publish besteht nicht exakt aus einer EXE.'
+          }
+
+          New-Item -ItemType Directory -Path release-assets -Force | Out-Null
+          $versionedExecutable = "release-assets/TanssSystemCapture.Client-v${env:CLIENT_VERSION}.exe"
+          $clientArchive = "release-assets/TanssSystemCapture.Client-v${env:CLIENT_VERSION}-win-x64.zip"
+          Copy-Item $files[0].FullName $versionedExecutable
+          Compress-Archive -LiteralPath $versionedExecutable -DestinationPath $clientArchive -CompressionLevel Optimal
+          Get-FileHash $clientArchive -Algorithm SHA256
+
+      - name: Upload client package to draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release upload $env:RELEASE_TAG `
+            "release-assets/TanssSystemCapture.Client-v$env:CLIENT_VERSION-win-x64.zip" `
+            --clobber
+
+  publish:
+    name: Verify and publish release
+    if: github.ref_name == 'release/0.18.0'
+    needs:
+      - server
+      - client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download completed release packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p release-assets
+          gh release download "${RELEASE_TAG}" \
+            --pattern "tns-api-server-v${SERVER_VERSION}.zip" \
+            --pattern "TanssSystemCapture.Client-v${CLIENT_VERSION}-win-x64.zip" \
+            --dir release-assets
+
+      - name: Verify packages and create checksums
+        working-directory: release-assets
+        run: |
+          test -s "tns-api-server-v${SERVER_VERSION}.zip"
+          test -s "TanssSystemCapture.Client-v${CLIENT_VERSION}-win-x64.zip"
+          unzip -t "tns-api-server-v${SERVER_VERSION}.zip"
+          unzip -t "TanssSystemCapture.Client-v${CLIENT_VERSION}-win-x64.zip"
+          sha256sum \
+            "tns-api-server-v${SERVER_VERSION}.zip" \
+            "TanssSystemCapture.Client-v${CLIENT_VERSION}-win-x64.zip" \
+            > SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
+
+      - name: Upload checksums and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release upload "${RELEASE_TAG}" \
+            release-assets/SHA256SUMS.txt \
+            --clobber
+
+          gh release edit "${RELEASE_TAG}" \
+            --title "TANSS Device Import v${SERVER_VERSION}" \
+            --notes-file docs/RELEASE_NOTES_0.18.0.md \
+            --draft=false \
+            --latest

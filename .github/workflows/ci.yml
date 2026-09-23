@@ -1,0 +1,71 @@
+name: Build and test
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_VERSION: 0.18.0
+
+jobs:
+  server:
+    name: Server (.NET 10 / Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore server
+        run: dotnet restore server/app/TnsApiImport.csproj
+      - name: Build server
+        run: dotnet build server/app/TnsApiImport.csproj --configuration Release --no-restore -p:TreatWarningsAsErrors=true
+      - name: Restore tests
+        run: dotnet restore server/tests/TnsApiImport.Tests.csproj
+      - name: Run tests
+        run: dotnet run --project server/tests/TnsApiImport.Tests.csproj --configuration Release --no-restore
+      - name: Validate Compose
+        run: docker compose -f server/compose.yaml config
+      - name: Build container
+        run: docker compose -f server/compose.yaml build
+
+  client:
+    name: Client (.NET 10 / Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore client
+        run: dotnet restore src/TanssSystemCapture.Client/TanssSystemCapture.Client.csproj --runtime win-x64
+      - name: Build client
+        run: dotnet build src/TanssSystemCapture.Client/TanssSystemCapture.Client.csproj --configuration Release --no-restore -p:TreatWarningsAsErrors=true
+      - name: Publish single EXE
+        run: dotnet publish src/TanssSystemCapture.Client/TanssSystemCapture.Client.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore --output artifacts/client
+      - name: Verify single-file output
+        shell: pwsh
+        run: |
+          $files = @(Get-ChildItem artifacts/client -File)
+          if ($files.Count -ne 1 -or $files[0].Name -ne 'TanssSystemCapture.Client.exe') {
+            $files | Select-Object Name, Length
+            throw 'Der Client-Publish besteht nicht exakt aus einer EXE.'
+          }
+          Get-FileHash $files[0].FullName -Algorithm SHA256
+
+          $archive = "artifacts/TanssSystemCapture.Client-v$env:RELEASE_VERSION-win-x64.zip"
+
+          Compress-Archive `
+            -LiteralPath $files[0].FullName `
+            -DestinationPath $archive `
+            -CompressionLevel Optimal
+
+          if (-not (Test-Path -LiteralPath $archive)) {
+            throw 'Das komprimierte Clientpaket wurde nicht erstellt.'
+          }

@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+if (( EUID != 0 )); then
+    exec sudo -- "$0" "$@"
+fi
+
+token_type="${1:-}"
+
+case "$token_type" in
+    erp)
+        token_file="/opt/tanss-device-import/secrets/erp_token"
+        token_label="ERP-Token"
+        ;;
+    device-management)
+        token_file="/opt/tanss-device-import/secrets/device_management_token"
+        token_label="Geräteverwaltungs-Token"
+        ;;
+    *)
+        echo "Verwendung: $0 {erp|device-management}" >&2
+        exit 2
+        ;;
+esac
+
+secret_directory="/opt/tanss-device-import/secrets"
+
+if [[ ! -d "$secret_directory" ]]; then
+    echo "Fehler: $secret_directory wurde nicht gefunden." >&2
+    exit 1
+fi
+
+IFS= read -rsp "$token_label vollständig eingeben (mit oder ohne Bearer): " entered_token
+echo
+
+normalized_token="$(
+    printf '%s' "$entered_token" |
+        sed -E 's/^[[:space:]]*[Bb][Ee][Aa][Rr][Ee][Rr][[:space:]]+//' |
+        tr -d '[:space:]'
+)"
+
+unset entered_token
+
+if [[ ! "$normalized_token" =~ ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]]; then
+    unset normalized_token
+    echo "Fehler: Der eingegebene Wert besitzt keine gültige JWT-Struktur." >&2
+    exit 1
+fi
+
+temporary_file="$(mktemp "$secret_directory/.token.XXXXXX")"
+
+cleanup() {
+    rm -f -- "$temporary_file"
+    unset normalized_token
+}
+
+trap cleanup EXIT
+
+printf 'Bearer %s' "$normalized_token" > "$temporary_file"
+unset normalized_token
+
+chown 1654:1654 "$temporary_file"
+chmod 0400 "$temporary_file"
+mv -f -- "$temporary_file" "$token_file"
+
+trap - EXIT
+
+echo "$token_label wurde sicher ersetzt."
+
+if [[ "$token_type" == "erp" ]] && command -v curl >/dev/null 2>&1; then
+    echo "Aktueller Dienststatus:"
+    curl --silent --show-error http://127.0.0.1:8080/status || true
+    echo
+fi

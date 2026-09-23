@@ -1,0 +1,66 @@
+name: tanss-device-import
+
+services:
+  import-api:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: tanss-device-import-api:0.18.0
+    container_name: tanss-device-import-api
+    restart: unless-stopped
+    environment:
+      Tanss__BaseUrl: "${TANSS_BASE_URL:-https://tanss.example.org/backend}"
+      Tanss__DeviceWebUrlTemplate: "${TANSS_DEVICE_WEB_URL_TEMPLATE:-}"
+      Tanss__ErpTokenFile: "/run/secrets/erp_token"
+      Tanss__DeviceManagementTokenFile: "/run/secrets/device_management_token"
+      Authentication__TotpSecretFile: "/run/secrets/totp_secret"
+      Authentication__TotpSessionMinutes: "${TOTP_SESSION_MINUTES:-60}"
+      SecurityKey__RelyingPartyId: "${PASSKEY_RP_ID:-import.example.org}"
+      SecurityKey__RelyingPartyName: "${PASSKEY_RP_NAME:-TANSS Device Import}"
+      SecurityKey__Origins__0: "${PASSKEY_ORIGIN:-https://import.example.org}"
+      SecurityKey__CredentialStoreFile: "/run/data/fido2/credentials.json"
+      SecurityKey__EnrollmentCodeFile: "/run/data/fido2/enrollment-code.json"
+      SecurityKey__ChallengeMinutes: "${PASSKEY_CHALLENGE_MINUTES:-5}"
+      SecurityKey__SessionMinutes: "${PASSKEY_SESSION_MINUTES:-60}"
+      Sap__Enabled: "${SAP_ENABLED:-false}"
+      Sap__Server: "${SAP_SERVER:-}"
+      Sap__Port: "${SAP_PORT:-1433}"
+      Sap__Database: "${SAP_DATABASE:-}"
+      Sap__AllowedDatabases__0: "${SAP_DATABASE:-}"
+      Sap__UserName: "${SAP_USER_NAME:-}"
+      Sap__RequiredUserName: "${SAP_USER_NAME:-}"
+      Sap__PasswordFile: "/run/secrets/sap_sql_password"
+      Sap__ConnectionTimeoutSeconds: "${SAP_CONNECTION_TIMEOUT_SECONDS:-5}"
+      Sap__CommandTimeoutSeconds: "${SAP_COMMAND_TIMEOUT_SECONDS:-5}"
+      Sap__TrustServerCertificate: "${SAP_TRUST_SERVER_CERTIFICATE:-false}"
+      ASPNETCORE_HTTP_PORTS: ""
+      Kestrel__Endpoints__Http__Url: "http://0.0.0.0:8080"
+      Kestrel__Endpoints__Https__Url: "https://0.0.0.0:45001"
+      Kestrel__Endpoints__Https__Certificate__Path: "/run/secrets/tls/fullchain.pem"
+      Kestrel__Endpoints__Https__Certificate__KeyPath: "/run/secrets/tls/privkey.pem"
+    ports:
+      - "127.0.0.1:${IMPORT_API_HEALTH_PORT:-8080}:8080"
+      - "${IMPORT_API_BIND_ADDRESS:-127.0.0.1}:${IMPORT_API_HTTPS_PORT:-45001}:45001"
+    volumes:
+      - type: bind
+        source: "${IMPORT_API_SECRETS_PATH:-./secrets}"
+        target: /run/secrets
+        read_only: true
+      - type: bind
+        source: "${IMPORT_API_DATA_PATH:-./data/fido2}"
+        target: /run/data/fido2
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

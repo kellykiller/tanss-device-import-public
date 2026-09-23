@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+artifacts/
+release-assets/
+server/.env
+server/secrets/
+server/data/
+*.user
+*.suo

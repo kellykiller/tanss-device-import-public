@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+if (( EUID != 0 )); then
+    echo "Fehler: Dieses Skript muss als root ausgeführt werden." >&2
+    exit 1
+fi
+
+certificate_name="${TANSS_IMPORT_CERTIFICATE_NAME:?TANSS_IMPORT_CERTIFICATE_NAME must be set}"
+expected_lineage="/etc/letsencrypt/live/$certificate_name"
+renewed_lineage="${RENEWED_LINEAGE:-$expected_lineage}"
+
+if [[ "$renewed_lineage" != "$expected_lineage" ]]; then
+    exit 0
+fi
+
+source_certificate="$renewed_lineage/fullchain.pem"
+source_private_key="$renewed_lineage/privkey.pem"
+install_root="${TANSS_IMPORT_INSTALL_ROOT:-/opt/tanss-device-import}"
+target_directory="$install_root/secrets/tls"
+target_certificate="$target_directory/fullchain.pem"
+target_private_key="$target_directory/privkey.pem"
+
+if [[ ! -s "$source_certificate" || ! -s "$source_private_key" ]]; then
+    echo "Fehler: Zertifikat oder privater Schlüssel wurde nicht gefunden." >&2
+    exit 1
+fi
+
+install -d -o root -g root -m 0710 "$target_directory"
+chown 0:1654 "$target_directory"
+
+temporary_certificate="$(mktemp "$target_directory/.fullchain.pem.XXXXXX")"
+temporary_private_key="$(mktemp "$target_directory/.privkey.pem.XXXXXX")"
+
+cleanup() {
+    rm -f -- "$temporary_certificate" "$temporary_private_key"
+}
+
+trap cleanup EXIT
+
+install -o root -g root -m 0400 \
+    "$source_certificate" \
+    "$temporary_certificate"
+
+install -o root -g root -m 0400 \
+    "$source_private_key" \
+    "$temporary_private_key"
+
+chown 1654:1654 \
+    "$temporary_certificate" \
+    "$temporary_private_key"
+
+mv -f -- "$temporary_certificate" "$target_certificate"
+mv -f -- "$temporary_private_key" "$target_private_key"
+
+trap - EXIT
+
+if /usr/bin/docker inspect \
+    --format '{{.State.Running}}' \
+    tanss-device-import-api 2>/dev/null |
+    grep -qx 'true'; then
+    /usr/bin/docker compose \
+        --project-directory "$install_root" \
+        -f "$install_root/compose.yaml" \
+        restart import-api
+fi
+
+logger -t tanss-device-import-certbot \
+    "Zertifikat für $certificate_name wurde bereitgestellt."
