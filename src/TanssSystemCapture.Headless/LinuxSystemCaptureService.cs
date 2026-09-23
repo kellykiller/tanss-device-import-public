@@ -127,7 +127,7 @@ public sealed class LinuxSystemCaptureService
             var isSpecial = SpecialAdapterMarkers.Any(marker =>
                 networkInterface.Name.StartsWith(marker, StringComparison.OrdinalIgnoreCase));
             var hasDefaultGateway = defaultInterfaces.Contains(networkInterface.Name);
-            var dhcpEnabled = HasSystemdNetworkLease(ipv4Properties.Index) ? true : null;
+            bool? dhcpEnabled = HasSystemdNetworkLease(ipv4Properties.Index) ? true : null;
 
             result.Add(new NetworkAdapterInfo
             {
