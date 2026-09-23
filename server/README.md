@@ -1,4 +1,4 @@
-# TANSS Device Import API 0.18.0
+# TANSS Device Import API 0.18.1
 
 Der Importdienst vermittelt ausschließlich zwischen dem Windows-Client und den
 konfigurierten TANSS-/SAP-Schnittstellen. Tokens, Kennwörter und TLS-Schlüssel
@@ -60,6 +60,11 @@ sudo server/bin/manage-security-key prepare
 sudo server/bin/manage-security-key enrollment-code 10
 ```
 
+Die Administrationsskripte lesen `IMPORT_API_DATA_PATH` und
+`IMPORT_API_SECRETS_PATH` aus der `.env` neben `compose.yaml`. Dadurch
+funktionieren sie auch bei übernommenen oder abweichenden Installationspfaden.
+Ein ausdrücklich gesetzter gleichnamiger Umgebungswert hat Vorrang.
+
 Im Client die Serveradresse eingeben, **Neuen Passkey registrieren …** wählen,
 Bezeichnung und Code eingeben und den gewünschten FIDO2-Hardware-Schlüssel
 berühren. Öffentliche Credential-Daten und Signaturzähler werden im persistenten
@@ -110,13 +115,13 @@ Secret-Inhalte zurückzugeben.
 
 ## Aktualisierung
 
-Vor dem Wechsel auf 0.18.0 müssen `.env`, Secrets, TLS-Dateien und das persistente
+Vor dem Wechsel auf 0.18.1 müssen `.env`, Secrets, TLS-Dateien und das persistente
 Passkey-Datenverzeichnis gesichert bzw. weiterverwendet werden. Danach:
 
 ```bash
-unzip -tq tns-api-server-v0.18.0.zip
-unzip -q tns-api-server-v0.18.0.zip -d tanss-device-import-v0.18.0
-cd tanss-device-import-v0.18.0
+unzip -tq tns-api-server-v0.18.1.zip
+unzip -q tns-api-server-v0.18.1.zip -d tanss-device-import-v0.18.1
+cd tanss-device-import-v0.18.1
 cp /path/to/existing/.env .env
 docker compose config
 docker compose build
@@ -124,6 +129,6 @@ docker compose up -d
 curl --fail --silent http://127.0.0.1:8080/health
 ```
 
-Die Antwort muss `"version":"0.18.0"` enthalten. Anschließend `/status` über
+Die Antwort muss `"version":"0.18.1"` enthalten. Anschließend `/status` über
 die authentifizierte HTTPS-Schnittstelle prüfen und erst danach den Client
-0.18.0 verteilen.
+0.18.1 verteilen.

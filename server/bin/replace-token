@@ -6,15 +6,27 @@ if (( EUID != 0 )); then
     exec sudo -- "$0" "$@"
 fi
 
+script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+server_directory="$(cd -- "$script_directory/.." && pwd -P)"
+source "$script_directory/runtime-paths"
+
+secret_directory="$(
+    tdi_resolve_setting \
+        IMPORT_API_SECRETS_PATH \
+        "$server_directory/.env" \
+        "/opt/tanss-device-import/secrets"
+)"
+tdi_require_absolute_path "$secret_directory" "IMPORT_API_SECRETS_PATH"
+
 token_type="${1:-}"
 
 case "$token_type" in
     erp)
-        token_file="/opt/tanss-device-import/secrets/erp_token"
+        token_file="$secret_directory/erp_token"
         token_label="ERP-Token"
         ;;
     device-management)
-        token_file="/opt/tanss-device-import/secrets/device_management_token"
+        token_file="$secret_directory/device_management_token"
         token_label="Geräteverwaltungs-Token"
         ;;
     *)
@@ -22,8 +34,6 @@ case "$token_type" in
         exit 2
         ;;
 esac
-
-secret_directory="/opt/tanss-device-import/secrets"
 
 if [[ ! -d "$secret_directory" ]]; then
     echo "Fehler: $secret_directory wurde nicht gefunden." >&2

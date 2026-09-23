@@ -7,6 +7,10 @@ if (( EUID != 0 )); then
     exit 1
 fi
 
+script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+server_directory="$(cd -- "$script_directory/.." && pwd -P)"
+source "$script_directory/runtime-paths"
+
 certificate_name="${TANSS_IMPORT_CERTIFICATE_NAME:?TANSS_IMPORT_CERTIFICATE_NAME must be set}"
 expected_lineage="/etc/letsencrypt/live/$certificate_name"
 renewed_lineage="${RENEWED_LINEAGE:-$expected_lineage}"
@@ -17,8 +21,16 @@ fi
 
 source_certificate="$renewed_lineage/fullchain.pem"
 source_private_key="$renewed_lineage/privkey.pem"
-install_root="${TANSS_IMPORT_INSTALL_ROOT:-/opt/tanss-device-import}"
-target_directory="$install_root/secrets/tls"
+install_root="${TANSS_IMPORT_INSTALL_ROOT:-$server_directory}"
+secret_directory="$(
+    tdi_resolve_setting \
+        IMPORT_API_SECRETS_PATH \
+        "$install_root/.env" \
+        "$install_root/secrets"
+)"
+tdi_require_absolute_path "$install_root" "TANSS_IMPORT_INSTALL_ROOT"
+tdi_require_absolute_path "$secret_directory" "IMPORT_API_SECRETS_PATH"
+target_directory="$secret_directory/tls"
 target_certificate="$target_directory/fullchain.pem"
 target_private_key="$target_directory/privkey.pem"
 

@@ -9,14 +9,14 @@ permissions:
   contents: write
 
 env:
-  SERVER_VERSION: "0.18.0"
-  CLIENT_VERSION: "0.18.0"
-  RELEASE_TAG: "v0.18.0"
+  SERVER_VERSION: "0.18.1"
+  CLIENT_VERSION: "0.18.1"
+  RELEASE_TAG: "v0.18.1"
 
 jobs:
   prepare:
     name: Prepare draft release
-    if: github.ref_name == 'release/0.18.0'
+    if: github.ref_name == 'release/0.18.1'
     runs-on: ubuntu-latest
     steps:
       - name: Create or refresh draft release
@@ -51,7 +51,7 @@ jobs:
 
   server:
     name: Build and upload server
-    if: github.ref_name == 'release/0.18.0'
+    if: github.ref_name == 'release/0.18.1'
     needs: prepare
     runs-on: ubuntu-latest
     steps:
@@ -70,6 +70,11 @@ jobs:
         run: |
           dotnet restore server/tests/TnsApiImport.Tests.csproj
           dotnet run --project server/tests/TnsApiImport.Tests.csproj --configuration Release --no-restore
+
+      - name: Test administration scripts
+        run: |
+          bash -n server/bin/* server/tests/runtime-paths.sh
+          bash server/tests/runtime-paths.sh
 
       - name: Validate Compose and build container
         run: |
@@ -95,7 +100,7 @@ jobs:
 
   client:
     name: Build and upload Windows client
-    if: github.ref_name == 'release/0.18.0'
+    if: github.ref_name == 'release/0.18.1'
     needs: prepare
     runs-on: windows-latest
     steps:
@@ -142,7 +147,7 @@ jobs:
 
   publish:
     name: Verify and publish release
-    if: github.ref_name == 'release/0.18.0'
+    if: github.ref_name == 'release/0.18.1'
     needs:
       - server
       - client
@@ -185,6 +190,6 @@ jobs:
 
           gh release edit "${RELEASE_TAG}" \
             --title "TANSS Device Import v${SERVER_VERSION}" \
-            --notes-file docs/RELEASE_NOTES_0.18.0.md \
+            --notes-file docs/RELEASE_NOTES_0.18.1.md \
             --draft=false \
             --latest

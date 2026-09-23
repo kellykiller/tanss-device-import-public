@@ -2,7 +2,7 @@
 
 TANSS Device Import erfasst Hardware- und Systemdaten eines Windows-Rechners und
 überträgt ausgewählte Werte kontrolliert über einen separaten Importdienst an
-TANSS. Der aktuelle Stand ist **0.18.0**.
+TANSS. Der aktuelle Stand ist **0.18.1**.
 
 ## Komponenten
 
@@ -60,7 +60,7 @@ bereitgestellt und niemals in `.env` oder Git gespeichert.
 ## Dokumentation
 
 - [Technische Dokumentation](docs/TECHNISCHE_DOKUMENTATION.md)
-- [Release Notes 0.18.0](docs/RELEASE_NOTES_0.18.0.md)
+- [Release Notes 0.18.1](docs/RELEASE_NOTES_0.18.1.md)
 - [Serverbetrieb](server/README.md)
 
 ## Öffentliche Veröffentlichung
