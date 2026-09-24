@@ -1,6 +1,6 @@
 # Technische Dokumentation – TANSS Device Import
 
-**Release:** Client 0.18.2 / Importdienst 0.18.2
+**Release:** Client 0.18.3 / Importdienst 0.18.3
 **Laufzeiten:** .NET 10, WPF unter Windows, ASP.NET Core unter Linux/Docker
 
 ## 1. Zweck und Systemgrenze
@@ -15,7 +15,7 @@ Datenbankbezeichnung, Kundenkennung oder Zertifikat-Fingerabdruck.
 
 ```mermaid
 flowchart TD
-    A["Windows-Client 0.18.2"] -->|"HTTPS · Passkey oder TOTP"| B["Importdienst 0.18.2"]
+    A["Windows-Client 0.18.3"] -->|"HTTPS · TOTP"| B["Importdienst 0.18.3"]
     B -->|"HTTPS · externe Tokens"| C["TANSS API"]
     B -->|"TLS · SQL-Lesekonto · optional"| D["SAP Business One"]
     B -->|"HTTPS · optional"| E["Wortmann-Seriennummernsuche"]
@@ -40,21 +40,7 @@ Weiterarbeit vorausgefüllt.
 
 ## 3. Authentifizierung
 
-### 3.1 Passkey (FIDO2-Hardware-Schlüssel)
-
-Die Benutzeroberfläche verwendet die markenneutrale Bezeichnung
-**Passkey (FIDO2-Hardware-Schlüssel)**. Zugelassen werden externe
-Cross-Platform-Authentifikatoren. Die WebAuthn-Anfrage setzt User Verification
-auf `discouraged`, sodass die vorgesehene Bedienung nur das Einstecken und die
-Berührung verlangt. Ob ein konkreter Authentifikator oder eine Plattform aus
-eigenen Richtlinien dennoch eine PIN verlangt, liegt außerhalb der Anwendung.
-
-Die Registrierung benötigt einen kurzlebigen, einmalig verwendbaren
-Administrationscode. Gespeichert werden ausschließlich öffentliche
-Credential-Daten, Bezeichnung, Zeitstempel und Signaturzähler. Private Schlüssel
-verlassen den Authentifikator nicht.
-
-### 3.2 TOTP
+### 3.1 TOTP
 
 TOTP folgt RFC 6238 mit HMAC-SHA1, sechs Stellen und 30-Sekunden-Schritten. Der
 Server akzeptiert ±1 Zeitfenster, verhindert Wiederverwendung durch einen
@@ -62,12 +48,13 @@ monotonen Zähler, vergleicht konstantzeitig und begrenzt Anmeldeversuche pro IP
 Sitzungstokens werden zufällig erzeugt und nur als SHA-256-Hash im Speicher
 gehalten.
 
-### 3.3 Entfernte Clientzertifikate
+### 3.2 Entfernte Anmeldeverfahren
 
 Version 0.18.0 unterstützt keine mTLS-/Clientzertifikat-Anmeldung mehr. Im
 Client existiert weder eine Zertifikatsauswahl noch ein Fingerabdruck; der Server
-fordert und validiert keine Clientzertifikate. TLS bleibt für den Transport
-verpflichtend.
+fordert und validiert keine Clientzertifikate. Version 0.18.3 entfernt zusätzlich
+Passkey/FIDO2 vollständig aus Client, Server, API und Konfiguration. TLS bleibt
+für den Transport verpflichtend.
 
 ## 4. Erfassung und Feldzuordnung
 
@@ -168,7 +155,6 @@ Werte ausdrücklich bestätigen. Empfohlen sind ein dediziertes Lesekonto,
 | Bereich | Konfiguration |
 |---|---|
 | TANSS | Basis-URL, optionales Geräte-Link-Template, Token-Dateipfade |
-| Passkey | RP-ID, RP-Name, Origin, Daten- und Codepfade |
 | TOTP | Secret-Datei und Sitzungsdauer |
 | SAP | Aktivierung, Server, Port, Datenbank, Benutzer, TLS-Verhalten |
 | Kestrel | HTTPS-Zertifikat und Ports |
@@ -187,7 +173,6 @@ Link angezeigt.
 - CPU-, RAM- und PID-Limits
 - kleine `tmpfs`-Ablage
 - Secret-Verzeichnis read-only
-- persistentes Schreibrecht nur für Passkey-Credential-Daten
 - TLS 1.2 oder TLS 1.3
 
 Der HTTP-Port ist standardmäßig nur an Loopback für Liveness gebunden. Der
@@ -201,10 +186,6 @@ Betrieb bewusst an eine passende Adresse gebunden werden.
 | GET | `/health` | anonyme Prozess-Liveness |
 | GET | `/status` | authentifizierter Konfigurationsstatus |
 | POST | `/api/v1/auth/totp/session` | TOTP-Sitzung |
-| POST | `/api/v1/auth/security-key/registration/options` | Passkey-Registrierung starten |
-| POST | `/api/v1/auth/security-key/registration/complete` | Passkey registrieren |
-| POST | `/api/v1/auth/security-key/session/options` | Passkey-Anmeldung starten |
-| POST | `/api/v1/auth/security-key/session/complete` | Passkey-Sitzung erzeugen |
 | GET | `/api/v1/device-catalogs` | Hersteller und Betriebssysteme |
 | GET | `/api/v1/companies/by-customer-number/{number}` | Kunde auflösen |
 | GET | `/api/v1/devices/by-serial-number` | Seriennummer prüfen |
@@ -216,7 +197,7 @@ Betrieb bewusst an eine passende Adresse gebunden werden.
 ## 12. Betrieb und Diagnose
 
 `/health` bestätigt Prozess und Version, aber nicht die Erreichbarkeit von TANSS
-oder SAP. `/status` zeigt Token-, Passkey- und TOTP-Konfiguration ohne geheime
+oder SAP. `/status` zeigt Token- und TOTP-Konfiguration ohne geheime
 Werte. Externe Abhängigkeiten werden zusätzlich durch die konkrete Funktion
 geprüft und liefern begrenzte, nicht sensitive Fehlermeldungen.
 
@@ -233,3 +214,8 @@ Kundennummer beschränkt. Zusätzlich ist der Windows-Client auf Fido2.Models
 4.0.1 fixiert, damit der WebAuthn-Adapter keine binär inkompatible, erst später
 veröffentlichte Modellbibliothek lädt. Der Server verbleibt unabhängig davon
 auf Fido2.AspNet 4.1.0.
+
+0.18.3 entfernt Passkey/FIDO2 vollständig. Die früheren Endpunkte existieren
+nicht mehr, der Container bindet kein Passkey-Datenverzeichnis mehr ein und die
+Anmeldung erfolgt ausschließlich über TOTP. Vorhandene Credential-Dateien aus
+0.18.0 bis 0.18.2 können beim Upgrade gelöscht werden.

@@ -9,7 +9,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AssemblyName>TanssSystemCapture.Client</AssemblyName>
     <RootNamespace>TanssSystemCapture.Client</RootNamespace>
-    <Version>0.18.2</Version>
+    <Version>0.18.3</Version>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
@@ -21,10 +21,5 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\TanssSystemCapture.ico</ApplicationIcon>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="DSInternals.Win32.WebAuthn.Adapter" Version="3.4.0" />
-    <PackageReference Include="Fido2.Models" Version="4.0.1" />
-  </ItemGroup>
 
 </Project>

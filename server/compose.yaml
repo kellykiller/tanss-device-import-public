@@ -5,7 +5,7 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile
-    image: tanss-device-import-api:0.18.2
+    image: tanss-device-import-api:0.18.3
     container_name: tanss-device-import-api
     restart: unless-stopped
     environment:
@@ -15,13 +15,6 @@ services:
       Tanss__DeviceManagementTokenFile: "/run/secrets/device_management_token"
       Authentication__TotpSecretFile: "/run/secrets/totp_secret"
       Authentication__TotpSessionMinutes: "${TOTP_SESSION_MINUTES:-60}"
-      SecurityKey__RelyingPartyId: "${PASSKEY_RP_ID:-import.example.org}"
-      SecurityKey__RelyingPartyName: "${PASSKEY_RP_NAME:-TANSS Device Import}"
-      SecurityKey__Origins__0: "${PASSKEY_ORIGIN:-https://import.example.org}"
-      SecurityKey__CredentialStoreFile: "/run/data/fido2/credentials.json"
-      SecurityKey__EnrollmentCodeFile: "/run/data/fido2/enrollment-code.json"
-      SecurityKey__ChallengeMinutes: "${PASSKEY_CHALLENGE_MINUTES:-5}"
-      SecurityKey__SessionMinutes: "${PASSKEY_SESSION_MINUTES:-60}"
       Sap__Enabled: "${SAP_ENABLED:-false}"
       Sap__Server: "${SAP_SERVER:-}"
       Sap__Port: "${SAP_PORT:-1433}"
@@ -46,9 +39,6 @@ services:
         source: "${IMPORT_API_SECRETS_PATH:-./secrets}"
         target: /run/secrets
         read_only: true
-      - type: bind
-        source: "${IMPORT_API_DATA_PATH:-./data/fido2}"
-        target: /run/data/fido2
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777

@@ -5,10 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <InvariantGlobalization>false</InvariantGlobalization>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <Version>0.18.2</Version>
+    <Version>0.18.3</Version>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Fido2.AspNet" Version="4.1.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.3" />
   </ItemGroup>
 </Project>

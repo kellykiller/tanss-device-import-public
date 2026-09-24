@@ -16,7 +16,6 @@
     <Compile Include="../app/DeviceWritePlanner.cs" Link="DeviceWritePlanner.cs" />
     <Compile Include="../app/DeviceNameConflictPolicy.cs" Link="DeviceNameConflictPolicy.cs" />
     <Compile Include="../app/TotpAlgorithm.cs" Link="TotpAlgorithm.cs" />
-    <Compile Include="../app/SecurityKeyPolicy.cs" Link="SecurityKeyPolicy.cs" />
     <Compile Include="../app/WortmannWarrantyClient.cs" Link="WortmannWarrantyClient.cs" />
     <Compile Include="../app/TanssOptions.cs" Link="TanssOptions.cs" />
     <Compile Include="../app/SapOptions.cs" Link="SapOptions.cs" />
