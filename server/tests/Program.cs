@@ -24,9 +24,6 @@ var tests = new (string Name, Action Test)[]
     ("Nicht unterstützten Kopiermodus ablehnen", TestCopyModeRemoved),
     ("TOTP RFC-6238-Testvektoren", TestTotpRfcVectors),
     ("TOTP Base32 und sechsstellige Prüfung", TestTotpVerification),
-    ("Passkey-Eingabegrenzen", TestSecurityKeyInputPolicy),
-    ("Passkey-Registrierungscode-Hash", TestSecurityKeyEnrollmentHash),
-    ("Passkey-Origin-Prüfung", TestSecurityKeyOriginValidation),
     ("Dynamische Client-Serveradresse", TestDynamicClientServerAddress),
     ("TANSS-Gerätelink-Template", TestTanssDeviceUrlTemplate),
     ("SAP-Freigaben aus Konfiguration", TestSapConfigurationAllowList),
@@ -398,42 +395,6 @@ static void TestTotpVerification()
     Equal(true, TotpAlgorithm.TryVerify(secret, code, timestamp, out var matchedCounter));
     Equal(counter, matchedCounter);
     Equal(false, TotpAlgorithm.TryVerify(secret, "12345A", timestamp, out _));
-}
-
-static void TestSecurityKeyInputPolicy()
-{
-    Equal(true, SecurityKeyPolicy.IsValidLabel("Passkey 1"));
-    Equal(false, SecurityKeyPolicy.IsValidLabel(string.Empty));
-    Equal(false, SecurityKeyPolicy.IsValidLabel("Key\nManipulation"));
-    Equal(false, SecurityKeyPolicy.IsValidLabel(new string('x', 81)));
-    Equal(true, SecurityKeyPolicy.IsValidTransactionId(new string('A', 43)));
-    Equal(false, SecurityKeyPolicy.IsValidTransactionId("zu-kurz"));
-}
-
-static void TestSecurityKeyEnrollmentHash()
-{
-    Equal(
-        "3FC9116F7BC25B4AF84CE4F1947ACDCF186279424344D94CAE7AB27A542A323F",
-        SecurityKeyPolicy.ComputeSha256Ascii("test-registration-code"));
-}
-
-static void TestSecurityKeyOriginValidation()
-{
-    Equal(
-        true,
-        SecurityKeyPolicy.IsValidOrigin(
-            "https://import.example.org",
-            "import.example.org"));
-    Equal(
-        false,
-        SecurityKeyPolicy.IsValidOrigin(
-            "https://fremd.example",
-            "import.example.org"));
-    Equal(
-        false,
-        SecurityKeyPolicy.IsValidOrigin(
-            "https://import.example.org/anmeldung",
-            "import.example.org"));
 }
 
 static void TestDynamicClientServerAddress()

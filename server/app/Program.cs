@@ -1,12 +1,11 @@
 using System.Net;
 using System.Security.Authentication;
 using System.Threading.RateLimiting;
-using Fido2NetLib;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using TnsApiImport;
 
-const string ServiceVersion = "0.18.2";
+const string ServiceVersion = "0.18.3";
 const string TotpSessionPath = "/api/v1/auth/totp/session";
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,37 +29,13 @@ builder.Services
     .Bind(builder.Configuration.GetSection(AuthenticationOptions.SectionName))
     .ValidateOnStart();
 
-builder.Services
-    .AddOptions<SecurityKeyOptions>()
-    .Bind(builder.Configuration.GetSection(SecurityKeyOptions.SectionName))
-    .ValidateOnStart();
-
-var securityKeyConfiguration = builder.Configuration
-    .GetSection(SecurityKeyOptions.SectionName)
-    .Get<SecurityKeyOptions>() ?? new SecurityKeyOptions();
-
-builder.Services.AddFido2(configuration =>
-{
-    configuration.RPID = securityKeyConfiguration.RelyingPartyId;
-    configuration.RPName = securityKeyConfiguration.RelyingPartyName;
-    configuration.Origins = securityKeyConfiguration.Origins
-        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-    configuration.Timeout = checked(
-        (uint)TimeSpan.FromMinutes(
-            securityKeyConfiguration.ChallengeMinutes).TotalMilliseconds);
-    configuration.ChallengeSize = 32;
-});
-
 builder.Services.AddSapSerialLookup(builder.Configuration);
 
 builder.Services.AddSingleton<IValidateOptions<TanssOptions>, TanssOptionsValidator>();
 builder.Services.AddSingleton<IValidateOptions<AuthenticationOptions>, AuthenticationOptionsValidator>();
-builder.Services.AddSingleton<IValidateOptions<SecurityKeyOptions>, SecurityKeyOptionsValidator>();
 builder.Services.AddSingleton<TokenFileProvider>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<TotpAuthenticationService>();
-builder.Services.AddSingleton<SecurityKeyStateStore>();
-builder.Services.AddScoped<SecurityKeyAuthenticationService>();
 builder.Services.AddScoped<DeviceCatalogService>();
 builder.Services.AddScoped<DeviceOperationService>();
 builder.Services.AddHostedService<TokenExpiryMonitor>();
@@ -68,26 +43,6 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddPolicy("totp-session", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0,
-                AutoReplenishment = true
-            }));
-    options.AddPolicy("security-key-session", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 10,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0,
-                AutoReplenishment = true
-            }));
-    options.AddPolicy("security-key-enrollment", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
@@ -124,7 +79,7 @@ builder.Services.AddHttpClient<WortmannWarrantyClient>(client =>
     client.BaseAddress = new Uri("https://www.wortmann.de/", UriKind.Absolute);
     client.Timeout = TimeSpan.FromSeconds(12);
     client.DefaultRequestHeaders.UserAgent.ParseAdd(
-        "TANSS-Device-Import/0.18.2 (+https://www.wortmann.de/)");
+        "TANSS-Device-Import/0.18.3 (+https://www.wortmann.de/)");
 });
 
 var app = builder.Build();
@@ -149,8 +104,7 @@ app.Use(async (httpContext, next) =>
         return;
     }
 
-    if (httpContext.Request.Path.Equals(TotpSessionPath) ||
-        SecurityKeyModule.IsAnonymousAuthenticationPath(httpContext.Request.Path))
+    if (httpContext.Request.Path.Equals(TotpSessionPath))
     {
         await next();
         return;
@@ -165,11 +119,7 @@ app.Use(async (httpContext, next) =>
         : null;
     var totpAuthentication = httpContext.RequestServices
         .GetRequiredService<TotpAuthenticationService>();
-    var securityKeyAuthentication = httpContext.RequestServices
-        .GetRequiredService<SecurityKeyStateStore>();
-
-    if (totpAuthentication.ValidateSession(sessionToken) ||
-        securityKeyAuthentication.ValidateSession(sessionToken))
+    if (totpAuthentication.ValidateSession(sessionToken))
     {
         await next();
         return;
@@ -178,7 +128,7 @@ app.Use(async (httpContext, next) =>
     await Results.Problem(
         statusCode: StatusCodes.Status401Unauthorized,
         title: "Anmeldung am Importdienst erforderlich",
-        detail: "Für diese HTTPS-Anfrage ist eine gültige Passkey- oder TOTP-Sitzung erforderlich.")
+        detail: "Für diese HTTPS-Anfrage ist eine gültige TOTP-Sitzung erforderlich.")
         .ExecuteAsync(httpContext);
 });
 
@@ -191,27 +141,20 @@ app.MapGet("/health", () => Results.Ok(new
 }));
 
 app.MapSapSerialLookup();
-app.MapSecurityKeyAuthentication();
-
 app.MapGet(
     "/status",
     (TokenFileProvider tokenProvider,
-     TotpAuthenticationService totpAuthentication,
-     SecurityKeyStateStore securityKeyAuthentication) =>
+     TotpAuthenticationService totpAuthentication) =>
 {
     var erpTokenStatus = tokenProvider.GetErpStatus();
     var deviceTokenStatus = tokenProvider.GetDeviceManagementStatus();
     var totpStatus = totpAuthentication.GetStatus();
-    var securityKeyStatus = securityKeyAuthentication.GetStatus();
     var allTokensUsable =
         erpTokenStatus.LocallyUsable && deviceTokenStatus.LocallyUsable;
     var hasWarning =
         string.Equals(erpTokenStatus.State, "warning", StringComparison.Ordinal) ||
         string.Equals(deviceTokenStatus.State, "warning", StringComparison.Ordinal);
-    var hasAuthenticationMethod =
-        securityKeyStatus.Configured ||
-        totpStatus.Configured;
-    var serviceStatus = !allTokensUsable || !hasAuthenticationMethod
+    var serviceStatus = !allTokensUsable || !totpStatus.Configured
         ? "error"
         : hasWarning
             ? "warning"
@@ -244,18 +187,6 @@ app.MapGet(
                 deviceTokenStatus.DaysRemaining,
                 deviceTokenStatus.Message
             },
-            passkey = new
-            {
-                acceptedOnHttps = true,
-                touchOnlyRequested = true,
-                userVerification = "discouraged",
-                authenticatorAttachment = "cross-platform",
-                securityKeyStatus.Configured,
-                securityKeyStatus.State,
-                securityKeyStatus.RegisteredKeyCount,
-                securityKeyStatus.SessionMinutes,
-                securityKeyStatus.Message
-            },
             totp = new
             {
                 acceptedOnHttps = true,
@@ -265,7 +196,7 @@ app.MapGet(
                 totpStatus.Message
             }
         },
-        statusCode: allTokensUsable && hasAuthenticationMethod
+        statusCode: allTokensUsable && totpStatus.Configured
             ? StatusCodes.Status200OK
             : StatusCodes.Status503ServiceUnavailable);
 });

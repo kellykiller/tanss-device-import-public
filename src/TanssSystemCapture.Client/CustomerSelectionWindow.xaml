@@ -74,28 +74,12 @@
                   Margin="0,0,0,18"
                   Padding="12">
             <StackPanel>
-                <RadioButton x:Name="PasskeyRadioButton"
-                             Content="Passkey (FIDO2-Hardware-Schlüssel)"
-                             IsChecked="True"
-                             GroupName="AuthenticationMode"
-                             Checked="AuthenticationMode_OnChecked" />
-                <TextBlock Margin="24,4,0,6"
+                <TextBlock Text="Sechsstelliger TOTP-Code" />
+                <TextBlock Margin="0,4,0,8"
                            Foreground="{DynamicResource SecondaryTextBrush}"
                            TextWrapping="Wrap"
-                           Text="Verwendet einen registrierten FIDO2-kompatiblen Hardware-Schlüssel beliebiger Marke. Einstecken und auf Aufforderung berühren; eine PIN wird nicht angefordert." />
-                <Button x:Name="RegisterPasskeyButton"
-                        Content="Neuen Passkey registrieren …"
-                        Width="240"
-                        Height="32"
-                        Margin="24,0,0,12"
-                        HorizontalAlignment="Left"
-                        Click="RegisterPasskeyButton_OnClick" />
-
-                <RadioButton x:Name="TotpRadioButton"
-                             Content="Sechsstelliger TOTP-Code"
-                             GroupName="AuthenticationMode"
-                             Checked="AuthenticationMode_OnChecked" />
-                <Grid Margin="24,8,0,0">
+                           Text="Die Anmeldung erfolgt ausschließlich mit dem aktuellen Code aus der eingerichteten Authenticator-App." />
+                <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="150" />
                         <ColumnDefinition Width="150" />
@@ -108,8 +92,7 @@
                                  Grid.Column="1"
                                  Height="32"
                                  Padding="8,4"
-                                 MaxLength="6"
-                                 IsEnabled="False" />
+                                 MaxLength="6" />
                 </Grid>
             </StackPanel>
         </GroupBox>

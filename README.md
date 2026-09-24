@@ -2,23 +2,20 @@
 
 TANSS Device Import erfasst Hardware- und Systemdaten eines Windows-Rechners und
 überträgt ausgewählte Werte kontrolliert über einen separaten Importdienst an
-TANSS. Der aktuelle Stand ist **0.18.2**.
+TANSS. Der aktuelle Stand ist **0.18.3**.
 
 ## Komponenten
 
 - `src/TanssSystemCapture.Client`: WPF-Client für Windows (`win-x64`, .NET 10)
 - `server/app`: ASP.NET-Core-Importdienst für Linux/Docker (.NET 10)
-- `server/bin`: Administrationsskripte für Passkeys, TOTP, Tokens und TLS
+- `server/bin`: Administrationsskripte für TOTP, Tokens und TLS
 - `server/tests`: Regressionstests für Validierung und Übertragungslogik
 
 ## Bedienung
 
 Beim Programmstart wird die HTTPS-Adresse des Importdienstes eingegeben. Sie ist
 nicht in der EXE hinterlegt und wird nicht gespeichert. Anschließend erfolgt die
-Anmeldung wahlweise mit:
-
-- einem registrierten **Passkey (FIDO2-Hardware-Schlüssel)** durch Berührung oder
-- einem sechsstelligen TOTP-Code.
+Anmeldung ausschließlich mit einem sechsstelligen TOTP-Code.
 
 Nach Kundenwahl und Datenerfassung kann das System direkt übertragen werden.
 Der Client erzeugt dabei unsichtbar eine serverseitige Vorschau, bestätigt deren
@@ -37,7 +34,7 @@ der konkrete Grund angezeigt und das betroffene Eingabefeld hervorgehoben.
 - Systemdaten, Netzwerkadapter, VM-Host, TeamViewer-ID und Garantiedaten
 - Wortmann-Seriennummernsuche einschließlich Hersteller-Artikelnummer
 - optionale SAP-Business-One-Auflösung Seriennummer → TANSS-Artikelnummer
-- Passkey- und TOTP-Sitzungen mit Rate-Limits
+- TOTP-Sitzungen mit Replay-Schutz und Rate-Limit
 - read-only Container, Non-Root-Betrieb und externe Secret-Dateien
 
 ## Konfiguration
@@ -60,7 +57,7 @@ bereitgestellt und niemals in `.env` oder Git gespeichert.
 ## Dokumentation
 
 - [Technische Dokumentation](docs/TECHNISCHE_DOKUMENTATION.md)
-- [Release Notes 0.18.2](docs/RELEASE_NOTES_0.18.2.md)
+- [Release Notes 0.18.3](docs/RELEASE_NOTES_0.18.3.md)
 - [Serverbetrieb](server/README.md)
 
 ## Öffentliche Veröffentlichung

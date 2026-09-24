@@ -9,7 +9,6 @@ public partial class CustomerSelectionWindow : Window
 {
     private ClientSettings? _settings;
     private ImportApiClient? _apiClient;
-    private ImportAuthenticationMode? _apiClientMode;
     private bool _clientTransferred;
     private bool _synchronizingThemeToggle;
 
@@ -79,12 +78,8 @@ public partial class CustomerSelectionWindow : Window
         SetBusy(true);
         InvalidateSelection();
         StatusTextBlock.Foreground = ThemeManager.GetBrush("PrimaryTextBrush");
-        StatusTextBlock.Text = GetSelectedAuthenticationMode() switch
-        {
-            ImportAuthenticationMode.Passkey =>
-                "Passkey einstecken und nach der Windows-Aufforderung berühren. Anschließend wird der Kunde abgerufen.",
-            _ => "TOTP-Code wird geprüft und anschließend der Kunde abgerufen."
-        };
+        StatusTextBlock.Text =
+            "TOTP-Code wird geprüft und anschließend der Kunde abgerufen.";
 
         try
         {
@@ -98,9 +93,7 @@ public partial class CustomerSelectionWindow : Window
             StatusTextBlock.Foreground = ThemeManager.GetBrush("SuccessTextBrush");
             var sessionInformation =
                 apiClient.AuthenticationSessionExpiresUtc is DateTimeOffset expiresUtc
-                    ? _apiClientMode == ImportAuthenticationMode.Passkey
-                        ? $" Passkey-Sitzung ({apiClient.SecurityKeyLabel}) gültig bis {expiresUtc.ToLocalTime():G}."
-                        : $" TOTP-Sitzung gültig bis {expiresUtc.ToLocalTime():G}."
+                    ? $" TOTP-Sitzung gültig bis {expiresUtc.ToLocalTime():G}."
                     : string.Empty;
             StatusTextBlock.Text =
                 "Kunde wurde eindeutig gefunden. Bitte Angaben prüfen und bestätigen." +
@@ -109,9 +102,7 @@ public partial class CustomerSelectionWindow : Window
         }
         catch (ImportApiException exception)
         {
-            if ((_apiClientMode is ImportAuthenticationMode.Totp or
-                 ImportAuthenticationMode.Passkey) &&
-                exception.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            if (exception.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 ResetApiClient();
             }
@@ -120,27 +111,15 @@ public partial class CustomerSelectionWindow : Window
         }
         catch (TaskCanceledException)
         {
-            var timeoutDetail = GetSelectedAuthenticationMode() switch
-            {
-                ImportAuthenticationMode.Passkey =>
-                    "Die Berührung des Passkeys wurde nicht rechtzeitig bestätigt.",
-                _ =>
-                    "Die TOTP-Anmeldung oder die HTTPS-Anfrage wurde nicht rechtzeitig abgeschlossen."
-            };
             ShowError(
                 "Zeitüberschreitung beim Zugriff auf den TANSS-Importdienst. " +
-                timeoutDetail + " Bitte erneut versuchen.");
+                "Die TOTP-Anmeldung oder die HTTPS-Anfrage wurde nicht rechtzeitig abgeschlossen. " +
+                "Bitte erneut versuchen.");
         }
         catch (HttpRequestException exception)
         {
-            var authenticationDetail = GetSelectedAuthenticationMode() switch
-            {
-                ImportAuthenticationMode.Passkey =>
-                    "die Passkey-Anmeldung wurde abgewiesen",
-                _ => "die HTTPS-Verbindung ist fehlgeschlagen"
-            };
             ShowError(
-                $"Der TANSS-Importdienst ist nicht erreichbar oder {authenticationDetail}. " +
+                "Der TANSS-Importdienst ist nicht erreichbar oder die HTTPS-Verbindung ist fehlgeschlagen. " +
                 exception.Message);
         }
         catch (ArgumentException exception)
@@ -164,10 +143,7 @@ public partial class CustomerSelectionWindow : Window
     private async Task<ImportApiClient> EnsureAuthenticatedApiClientAsync()
     {
         var settings = ClientSettings.Create(ServerAddressTextBox.Text);
-        var selectedMode = GetSelectedAuthenticationMode();
-
         if (_apiClient is not null &&
-            _apiClientMode == selectedMode &&
             _settings?.ImportApiBaseUri == settings.ImportApiBaseUri)
         {
             return _apiClient;
@@ -175,29 +151,6 @@ public partial class CustomerSelectionWindow : Window
 
         ResetApiClient();
         _settings = settings;
-
-        if (selectedMode == ImportAuthenticationMode.Passkey)
-        {
-            var securityKeyClient = new ImportApiClient(
-                settings.ImportApiBaseUri,
-                requestTimeout: TimeSpan.FromSeconds(
-                    settings.RequestTimeoutSeconds));
-
-            try
-            {
-                await securityKeyClient.AuthenticateWithSecurityKeyAsync(
-                    CancellationToken.None);
-            }
-            catch
-            {
-                securityKeyClient.Dispose();
-                throw;
-            }
-
-            _apiClient = securityKeyClient;
-            _apiClientMode = selectedMode;
-            return _apiClient;
-        }
 
         var totpCode = TotpCodePasswordBox.Password.Trim();
 
@@ -226,7 +179,6 @@ public partial class CustomerSelectionWindow : Window
 
         TotpCodePasswordBox.Clear();
         _apiClient = totpClient;
-        _apiClientMode = selectedMode;
         return _apiClient;
     }
 
@@ -254,57 +206,6 @@ public partial class CustomerSelectionWindow : Window
         _settings = null;
         InvalidateSelection();
         StatusTextBlock.Text = string.Empty;
-    }
-
-    private void AuthenticationMode_OnChecked(object sender, RoutedEventArgs e)
-    {
-        if (!IsInitialized)
-        {
-            return;
-        }
-
-        ResetApiClient();
-        InvalidateSelection();
-        StatusTextBlock.Text = string.Empty;
-        TotpCodePasswordBox.IsEnabled = TotpRadioButton.IsChecked == true;
-
-        if (TotpRadioButton.IsChecked == true)
-        {
-            TotpCodePasswordBox.Focus();
-        }
-    }
-
-    private void RegisterPasskeyButton_OnClick(
-        object sender,
-        RoutedEventArgs e)
-    {
-        ClientSettings settings;
-
-        try
-        {
-            settings = ClientSettings.Create(ServerAddressTextBox.Text);
-        }
-        catch (ClientConfigurationException exception)
-        {
-            ShowError(exception.Message);
-            ServerAddressTextBox.Focus();
-            return;
-        }
-
-        var registrationWindow = new SecurityKeyRegistrationWindow(settings)
-        {
-            Owner = this
-        };
-
-        if (registrationWindow.ShowDialog() == true)
-        {
-            PasskeyRadioButton.IsChecked = true;
-            ResetApiClient();
-            InvalidateSelection();
-            StatusTextBlock.Foreground = ThemeManager.GetBrush("SuccessTextBrush");
-            StatusTextBlock.Text =
-                $"Passkey „{registrationWindow.RegisteredKeyLabel}“ wurde registriert und kann jetzt verwendet werden.";
-        }
     }
 
     private void ContinueButton_OnClick(object sender, RoutedEventArgs e)
@@ -372,10 +273,7 @@ public partial class CustomerSelectionWindow : Window
         CustomerNumberTextBox.IsEnabled = !isBusy;
         ServerAddressTextBox.IsEnabled = !isBusy;
         CheckCustomerButton.IsEnabled = !isBusy;
-        PasskeyRadioButton.IsEnabled = !isBusy;
-        TotpRadioButton.IsEnabled = !isBusy;
-        RegisterPasskeyButton.IsEnabled = !isBusy;
-        TotpCodePasswordBox.IsEnabled = !isBusy && TotpRadioButton.IsChecked == true;
+        TotpCodePasswordBox.IsEnabled = !isBusy;
         Cursor = isBusy ? System.Windows.Input.Cursors.Wait : null;
     }
 
@@ -386,21 +284,9 @@ public partial class CustomerSelectionWindow : Window
         StatusTextBlock.Text = message;
     }
 
-    private ImportAuthenticationMode GetSelectedAuthenticationMode() =>
-        TotpRadioButton.IsChecked == true
-            ? ImportAuthenticationMode.Totp
-            : ImportAuthenticationMode.Passkey;
-
     private void ResetApiClient()
     {
         _apiClient?.Dispose();
         _apiClient = null;
-        _apiClientMode = null;
-    }
-
-    private enum ImportAuthenticationMode
-    {
-        Passkey,
-        Totp
     }
 }

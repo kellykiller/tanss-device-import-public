@@ -1843,10 +1843,8 @@ public partial class MainWindow : Window
         DeviceCreationStatusTextBlock.Visibility = Visibility.Visible;
     }
 
-    private string GetAuthenticationActionHint() =>
-        string.IsNullOrWhiteSpace(_apiClient.SecurityKeyLabel)
-            ? "Die bestätigte TOTP-Sitzung wird verwendet."
-            : "Die bestätigte Passkey-Sitzung wird verwendet.";
+    private static string GetAuthenticationActionHint() =>
+        "Die bestätigte TOTP-Sitzung wird verwendet.";
 
     private void UpdateCustomerDisplay()
     {
