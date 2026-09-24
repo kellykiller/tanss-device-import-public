@@ -73,3 +73,38 @@ jobs:
           if (-not (Test-Path -LiteralPath $archive)) {
             throw 'Das komprimierte Clientpaket wurde nicht erstellt.'
           }
+
+  headless:
+    name: Headless client (.NET 10 / Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore headless client and tests
+        run: |
+          dotnet restore src/TanssSystemCapture.Headless/TanssSystemCapture.Headless.csproj --runtime linux-x64
+          dotnet restore src/TanssSystemCapture.Headless.Tests/TanssSystemCapture.Headless.Tests.csproj
+      - name: Build headless client
+        run: dotnet build src/TanssSystemCapture.Headless/TanssSystemCapture.Headless.csproj --configuration Release --no-restore -p:TreatWarningsAsErrors=true
+      - name: Run headless tests
+        run: dotnet run --project src/TanssSystemCapture.Headless.Tests/TanssSystemCapture.Headless.Tests.csproj --configuration Release --no-restore
+      - name: Publish single binary
+        run: |
+          dotnet publish src/TanssSystemCapture.Headless/TanssSystemCapture.Headless.csproj \
+            --configuration Release \
+            --runtime linux-x64 \
+            --self-contained true \
+            --no-restore \
+            --output artifacts/headless
+          test "$(find artifacts/headless -maxdepth 1 -type f | wc -l)" -eq 1
+          test -x artifacts/headless/tanss-system-capture
+          artifacts/headless/tanss-system-capture --help
+          sha256sum artifacts/headless/tanss-system-capture
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TanssSystemCapture.Headless-linux-x64
+          path: artifacts/headless/tanss-system-capture
+          if-no-files-found: error
+          retention-days: 14

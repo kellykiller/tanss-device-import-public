@@ -7,6 +7,7 @@ TANSS. Der aktuelle Stand ist **0.18.3**.
 ## Komponenten
 
 - `src/TanssSystemCapture.Client`: WPF-Client für Windows (`win-x64`, .NET 10)
+- `src/TanssSystemCapture.Headless`: interaktive Linux-CLI für Systeme ohne GUI
 - `server/app`: ASP.NET-Core-Importdienst für Linux/Docker (.NET 10)
 - `server/bin`: Administrationsskripte für TOTP, Tokens und TLS
 - `server/tests`: Regressionstests für Validierung und Übertragungslogik
@@ -59,6 +60,7 @@ bereitgestellt und niemals in `.env` oder Git gespeichert.
 - [Technische Dokumentation](docs/TECHNISCHE_DOKUMENTATION.md)
 - [Release Notes 0.18.3](docs/RELEASE_NOTES_0.18.3.md)
 - [Serverbetrieb](server/README.md)
+- [Linux-Headless-Client](docs/HEADLESS_LINUX.md)
 
 ## Öffentliche Veröffentlichung
 
