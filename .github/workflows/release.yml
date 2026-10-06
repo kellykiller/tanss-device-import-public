@@ -1,0 +1,84 @@
+name: Publish Windows client
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: client-release
+  cancel-in-progress: false
+
+jobs:
+  client:
+    if: github.event_name == 'push' || github.ref_name == 'main'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Validate client version and release target
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          [xml]$project = Get-Content src/TanssSystemCapture.Client/TanssSystemCapture.Client.csproj
+          $version = [string]$project.Project.PropertyGroup.Version
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Ungültige Clientversion.' }
+          if ($env:GITHUB_EVENT_NAME -eq 'push' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag und Clientversion stimmen nicht überein.' }
+          if (-not (Test-Path "docs/RELEASE_NOTES_$version.md")) { throw 'Releasehinweise fehlen.' }
+          $existing = gh release view "v$version" --json id 2>$null
+          if ($LASTEXITCODE -eq 0) { throw 'Vorhandene Releases werden nicht überschrieben.' }
+          "CLIENT_VERSION=$version" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Check public client boundary
+        run: python tools/check_public_repository.py
+      - name: Restore and build
+        run: |
+          dotnet restore tests/ClientSmoke/ClientSmoke.csproj
+          dotnet build src/TanssSystemCapture.Client/TanssSystemCapture.Client.csproj --configuration Release --no-restore -p:TreatWarningsAsErrors=true
+      - name: Audit NuGet dependencies
+        run: |
+          dotnet list tests/ClientSmoke/ClientSmoke.csproj package --vulnerable --include-transitive --format json | Out-File dependency-audit.json -Encoding utf8
+          python tools/check_dependency_audit.py dependency-audit.json
+      - name: Test client and WPF regressions
+        timeout-minutes: 5
+        run: dotnet test tests/ClientSmoke/ClientSmoke.csproj --configuration Release --no-restore --logger trx --collect:"XPlat Code Coverage"
+      - name: Summarize tests
+        if: always()
+        run: python tools/test_report.py tests/ClientSmoke/TestResults >> $env:GITHUB_STEP_SUMMARY
+      - name: Publish and verify client packages
+        shell: pwsh
+        run: |
+          dotnet publish src/TanssSystemCapture.Client/TanssSystemCapture.Client.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore --output artifacts/client
+          $version = (Get-Item artifacts/client/TanssSystemCapture.Client.exe).VersionInfo.ProductVersion
+          if ($version -notlike "$env:CLIENT_VERSION*") { throw 'EXE-Version stimmt nicht überein.' }
+          python tools/package_client.py artifacts/client release-assets
+      - name: Publish client-only release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+            $head = gh api "repos/$env:GH_REPO/git/ref/heads/main" --jq '.object.sha'
+            if ($LASTEXITCODE -ne 0 -or $head -ne $env:GITHUB_SHA) { throw 'main hat sich während des Builds geändert.' }
+          }
+          gh release create "v$env:CLIENT_VERSION" --draft --target $env:GITHUB_SHA --title "TANSS Systemerfassung – Client $env:CLIENT_VERSION" --notes-file "docs/RELEASE_NOTES_$env:CLIENT_VERSION.md"
+          if ($LASTEXITCODE -ne 0) { throw 'Release konnte nicht vorbereitet werden.' }
+          gh release upload "v$env:CLIENT_VERSION" "release-assets/TanssSystemCapture.Client-v$env:CLIENT_VERSION.exe" "release-assets/TanssSystemCapture.Client-v$env:CLIENT_VERSION-win-x64.zip" release-assets/SHA256SUMS.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Client-Upload fehlgeschlagen.' }
+          gh release edit "v$env:CLIENT_VERSION" --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Release konnte nicht veröffentlicht werden.' }

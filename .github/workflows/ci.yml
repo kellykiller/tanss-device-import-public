@@ -1,0 +1,50 @@
+name: Validate Windows client
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: client-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  client:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Check public client boundary
+        run: python tools/check_public_repository.py
+      - name: Restore and build
+        run: |
+          dotnet restore tests/ClientSmoke/ClientSmoke.csproj
+          dotnet build src/TanssSystemCapture.Client/TanssSystemCapture.Client.csproj --configuration Release --no-restore -p:TreatWarningsAsErrors=true
+      - name: Audit NuGet dependencies
+        run: |
+          dotnet list tests/ClientSmoke/ClientSmoke.csproj package --vulnerable --include-transitive --format json | Out-File dependency-audit.json -Encoding utf8
+          python tools/check_dependency_audit.py dependency-audit.json
+      - name: Test client and WPF regressions
+        timeout-minutes: 5
+        run: dotnet test tests/ClientSmoke/ClientSmoke.csproj --configuration Release --no-restore --logger trx --collect:"XPlat Code Coverage"
+      - name: Summarize tests
+        if: always()
+        run: python tools/test_report.py tests/ClientSmoke/TestResults >> $env:GITHUB_STEP_SUMMARY
+      - name: Verify single EXE packaging
+        run: |
+          dotnet publish src/TanssSystemCapture.Client/TanssSystemCapture.Client.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore --output artifacts/client
+          python tools/package_client.py artifacts/client release-assets
