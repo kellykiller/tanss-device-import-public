@@ -27,6 +27,10 @@ Die EXE ist bewusst unsigniert. SHA256-Prüfsummen werden zu jeder Veröffentlic
 - Gefundene Rechnungs-PDF anzeigen oder ein eigenes PDF auswählen. Die gewählte Datei wird erst im Zusammenhang mit einer bestätigten Geräteübertragung zur Ablage vorgemerkt.
 - Optionale Übertragungsvorschau und Status der nachgelagerten PDF-Verarbeitung.
 
+### PDF-Ablage über den Importdienst
+
+Nach der bestätigten Geräteübertragung kann ein kompatibler Importdienst das ausgewählte PDF mit einem TANSS-Gerätemanagement-Token am Gerät ablegen. Die Uploadfunktion wird serverseitig eingerichtet. Dafür ist kein Update des Windows-Clients erforderlich.
+
 ## Dokumentation
 
 - [Bedienung und Datenverarbeitung](docs/CLIENT.md)
