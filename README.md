@@ -6,7 +6,7 @@ Dieses Repository enthält ausschließlich den Client, neutrale Tests, Dokumenta
 
 ## Download und Start
 
-Die [Releases](https://github.com/kellykiller/tanss-device-import-public/releases) enthalten eine einzelne `TanssSystemCapture.Client-v1.0.1.exe`, dieselbe EXE als ZIP und `SHA256SUMS.txt`.
+**Windows x64 herunterladen** · [EXE](https://github.com/kellykiller/tanss-device-import-public/releases/download/v1.0.1/TanssSystemCapture.Client-v1.0.1.exe) · [ZIP](https://github.com/kellykiller/tanss-device-import-public/releases/download/v1.0.1/TanssSystemCapture.Client-v1.0.1-win-x64.zip) · [SHA256-Prüfsummen](https://github.com/kellykiller/tanss-device-import-public/releases/download/v1.0.1/SHA256SUMS.txt)
 
 1. Die EXE herunterladen und unter Windows x64 starten. Eine separate .NET-Installation ist nicht erforderlich; der Client verlangt keine Administratorrechte.
 2. Die HTTPS-Adresse des vorhandenen Importdienstes eingeben, beispielsweise `https://import.example.org`.
